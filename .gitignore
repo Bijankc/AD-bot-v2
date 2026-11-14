@@ -31,3 +31,7 @@ venv/
 .ruff_cache/
 build/
 dist/
+
+# Reference material the author brings (never published)
+*dontpush*
+cheatsheet*

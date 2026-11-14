@@ -9,7 +9,7 @@ description = "Screen-reading farming bot for Anime Dimensions Simulator (based 
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
-dependencies = ["numpy", "opencv-python", "pillow"]
+dependencies = ["numpy", "opencv-python", "pillow", "mss"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
