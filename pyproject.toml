@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adbot2"
+version = "0.0.1"
+description = "Screen-reading farming bot for Anime Dimensions Simulator (based on the idea of AD-bot by Samogub)"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = ["numpy", "opencv-python", "pillow"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+ml = ["torch", "torchvision", "onnx", "onnxruntime-gpu"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

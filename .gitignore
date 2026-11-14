@@ -1,0 +1,33 @@
+# Private: settings, server links, logs, anything showing the Roblox username
+*.ini
+config.local.toml
+*.log
+logs/
+shots/
+captures/
+data/
+datasets/
+drafts/
+ref/
+*.png
+*.jpg
+*.mp4
+!docs/img/*.png
+
+# Models and exports (large; published separately if at all)
+models/
+*.onnx
+*.engine
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
