@@ -114,3 +114,18 @@ and anything with your username never go into the repo; small commits; ask befor
 - **17 Nov, step 4 (evaluation):** frozen split by farm day and layout with a 3-min guard band; per-class accuracy,
   confusion, worst examples to `C:\adbot2\reports\`; 13 named regression cases from the old bot's failures, 91
   candidates proposed (none yet for only-LEAVE results and the raid clock; 1 for Revive). Numbers wait for labels.
+- **17 Nov, labels:** 441 labelled in four rounds. They added classes `dead` (no respawn/REVIVE offer) and
+  `extreme_window`, and corrected ten weak-label rules (timings around resets, queues, Speed Raid start, results).
+- **17 Nov, step 5a (screen classifier, first model):** MobileNet-V3-large (ImageNet, BSD) at 448x240 on the canonical
+  view; 176 labelled + 642 hinted train frames; 1 min of training, 1.6 GB VRAM. Held-out results (test = 17 Nov morning
+  and old-bot shots of 14 Nov; val chose the epoch, so it is slightly optimistic):
+
+  | | old bot's log | kNN | model |
+  |---|---|---|---|
+  | test, 100% captures | 63% | 85% | **97%** (69) |
+  | test, old-bot shots | 87% | 35% | **92%** (24) |
+  | val, 100% captures | 79% | 78% | 94% (128) |
+  | regression failures | 50 | 21 | **3** (2 GF banner, 1 Revive) |
+
+  Speed on the 4060: 7 ms to shrink a 1080p frame + 12 ms on the GPU (17 ms CPU) via ONNX Runtime. Weak spots: Speed
+  Raid window (no train examples yet), respawn, raid_world shots. No 150% frames are labelled on a held-out day yet.

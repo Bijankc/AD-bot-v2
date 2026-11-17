@@ -2,6 +2,7 @@
 
     python tools/evaluate.py --predictor hint     the old bot's own belief (its log), as a baseline
     python tools/evaluate.py --predictor knn      nearest neighbours on the embeddings, trained on the train split
+    python tools/evaluate.py --predictor model    the newest trained screen classifier (tools/train_screens.py)
 
 Splits are frozen in <ADBOT2_HOME>/data/splits.json (new sessions are added, none ever move). Reports go to
 <ADBOT2_HOME>/reports/<time>_<predictor>/ (report.md, confusion.csv, worst/*.jpg); never into the repo.
@@ -61,7 +62,27 @@ def predict_knn(recs, labels, split) -> dict[str, tuple[str | None, float]]:
     return {fid: (classes[int(p.argmax())], float(p.max())) for fid, p in zip(todo, probs)}
 
 
-PREDICTORS = {"hint": predict_hint, "knn": predict_knn}
+def predict_model(recs, labels, split) -> dict[str, tuple[str | None, float]]:
+    """The newest trained screen classifier (<ADBOT2_HOME>/models/screens/<time>/model.onnx), on the GPU."""
+    from train_screens import small_of
+
+    from adbot2.screen_model import OnnxScreenModel
+
+    done = sorted(f.parent for f in (paths.home() / "models" / "screens").glob("*/metrics.json"))
+    if not done:
+        raise SystemExit("no trained model yet (tools/train_screens.py)")
+    m = OnnxScreenModel(done[-1])
+    print(f"model: {done[-1].name}")
+    out = {}
+    for r in recs:
+        v = small_of(r)
+        if v is not None:
+            p = m.probs(v)[0]
+            out[r.id] = (m.classes[int(p.argmax())], float(p.max()))
+    return out
+
+
+PREDICTORS = {"hint": predict_hint, "knn": predict_knn, "model": predict_model}
 
 
 def save_example(rec, path: Path, text: str) -> None:
