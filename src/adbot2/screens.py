@@ -24,6 +24,7 @@ class Screen(str, Enum):
     FIGHT = "fight"                          # any fight (Raid, Speed Raid, Infinity, Dimension); the mode is told
                                              # apart by the detector (AUTO button, red enemy count), not here
     RESPAWN = "respawn"                      # dead or resetting inside a run: pink sky, no enemies, "None" for AUTO
+    DEAD = "dead"                            # dead inside a run with neither a respawn nor a REVIVE offer (waiting)
     REVIVE = "revive"                        # death screen with REVIVE (never press it: costs gems)
     RESULTS_RAID = "results_raid"            # RAID RESULTS (ranking + rewards)
     RESULTS_INFINITY = "results_infinity"    # Infinity results, RETRY / LEAVE / AUTO RETRY
@@ -48,6 +49,7 @@ HOTKEYS: dict[str, Screen] = {
     "9": Screen.RESPAWN,
     "0": Screen.LOADING,
     "q": Screen.REVIVE,
+    "d": Screen.DEAD,
     "w": Screen.RESULTS_RAID,
     "e": Screen.RESULTS_INFINITY,
     "r": Screen.RESULTS_DIMENSION,

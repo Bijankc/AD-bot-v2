@@ -75,7 +75,8 @@ no user names, no server links, no paths under the user profile.
 ## Screen classes (changed 17 Nov after the first labels)
 
 - One `fight` class (key 8) for every mode; the mode comes from the detector (AUTO button, red enemy count). New
-  `respawn` (key 9): dead or resetting inside a run (pink sky, no enemies, "None" where AUTO is). Old labels were
+  `respawn` (key 9): dead or resetting inside a run (pink sky, no enemies, "None" where AUTO is). `dead` (key d):
+  dead with neither respawn nor REVIVE on offer. Old labels were
   merged with `by: merge_fight_classes` rows; backups of the manifest and labels from before are in `data\`.
 - Rules the first 120 labels proved wrong and were fixed: old-bot "raid_world" shots show the modes menu; "Titan
   results:" is logged after RETRY (loading); the GF queue hint must stop ~60 s before the next log line; "Create tab"
