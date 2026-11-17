@@ -43,6 +43,14 @@ def frame_path(rec: FrameRecord, home: Path) -> Path:
     return home / "data" / "raw" / rec.file
 
 
+def load_game_area(rec: FrameRecord, home: Path):
+    """The record's image mapped to the canonical game area (adbot2.geometry). Raises UnknownLayout for crops etc."""
+    from adbot2.frames import load_image
+    from adbot2.geometry import to_canvas
+
+    return to_canvas(load_image(frame_path(rec, home)), rec.dpi if rec.root == "captures" else None)
+
+
 def file_id(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:

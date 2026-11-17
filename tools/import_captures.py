@@ -18,6 +18,7 @@ from pathlib import Path
 
 from adbot2 import paths
 from adbot2.dataset import FrameRecord, append_jsonl, load_manifest
+from adbot2.geometry import layout_of
 from adbot2.oldlog import read_all_lines
 from adbot2.weaklabels import HintIndex, context_at, intervals
 
@@ -47,8 +48,9 @@ def new_records(captures: Path, known: set[str], lines, before: datetime) -> lis
                 continue
             hint, rule = hints.at(t)
             rect = [int(row[k]) for k in ("left", "top", "width", "height")]
+            usable = layout_of(rect[2], rect[3], int(row["dpi"])) is not None  # not mid-resize etc.
             out.append(FrameRecord(fid, f"{day_dir.name}/{row['file']}", "capture", row["file"], rect[2], rect[3],
-                                   True, t.isoformat(timespec="milliseconds"), row.get("kind"), hint,
+                                   usable, t.isoformat(timespec="milliseconds"), row.get("kind"), hint,
                                    context_at(lines, t), "captures", rect, int(row["dpi"]), rule))
             known.add(fid)
     return out

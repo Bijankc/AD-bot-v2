@@ -33,10 +33,16 @@ no user names, no server links, no paths under the user profile.
   against the last 20 saves, not just the last one; static screens back off 20 s -> 160 s.
 - Each session also run `tools/import_old_shots.py --bot-dir ..\AD-bot` (the old bot keeps only its newest 100 shots).
 
-## Screen geometry
+## Screen geometry (`adbot2/geometry.py`)
 
-- 100% layout: client 1920x1017 at (0,23). 150% (lid shut at night): 1920x1046 at (0,-6); the logger clips to the screen,
-  so 150% frames are saved as 1920x1040 at (0,0) (top 6 rows missing). The index records rect and DPI per frame.
+- Canonical frame = the old bot's 1920x1080 screen coordinates. 100%: client 1920x1017 at (0,23); 150% (lid shut at
+  night): 1920x1046 at (0,-6), saved by the logger as 1920x1040 (top 6 rows off screen). Both end at row 1040.
+- Only rows 23..1039 are game in every layout; `to_canvas` zeroes the rest (title bar, window behind, taskbar) and
+  `model_view` is that band (1920x1017). Unknown client sizes (mid-resize) raise `UnknownLayout` and are not used.
+- Measured 17 Nov: bottom/centre-anchored UI (hotbar, Update Notes, gear, banners) lines up within 1 px across layouts;
+  the top-left HP/XP panel is pinned to the client top: 29 px higher and 0.95x at 150%. The old bot's AUTO templates
+  also differ per scale. So never read with one fixed box for both layouts: locate with the detector, or per-layout boxes.
+- Tests marked `data` use the real frames and skip when `ADBOT2_HOME` has none.
 
 ## Weak labels and labelling (step 2)
 

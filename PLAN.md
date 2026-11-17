@@ -108,3 +108,6 @@ and anything with your username never go into the repo; small commits; ask befor
 - **17 Nov, step 2 (weak labels and batches):** log lines turned into screen intervals (`weaklabels.py`); 10,731
   captures registered with hints (89% hinted: mostly fights, as expected; rare screens are rare). Embeddings for all
   10,911 frames in 59 s on the GPU. Batch picker and batch mode on the labelling page. First batch (120) waiting for labels.
+- **17 Nov, step 3 (game area):** `geometry.py` maps 100%, 150% and old-bot screen grabs to one canonical frame and blanks
+  everything outside the game band. Bottom UI aligns within 1 px; top-anchored UI (HP panel) is 29 px higher and 0.95x at
+  150%, so readers must not use one fixed box. 8 mid-resize frames excluded. Embeddings redone on the canonical view.

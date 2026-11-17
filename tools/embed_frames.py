@@ -2,8 +2,9 @@
 
     python tools/embed_frames.py            (new frames only; cached in <ADBOT2_HOME>/data/embeddings/)
 
-MobileNet-V3-small with ImageNet weights (torchvision, BSD; weights cached in <ADBOT2_HOME>/models/torch). Frames are
-decoded at 1/4 size and fed at 320x180. Below-normal priority, small batches, a few hundred MB of VRAM at most.
+MobileNet-V3-small with ImageNet weights (torchvision, BSD; weights cached in <ADBOT2_HOME>/models/torch). Each frame
+is mapped to the canonical game area (adbot2.geometry), its model view (1920x1017) fed at 320x170.
+Below-normal priority, small batches, a few hundred MB of VRAM at most.
 """
 
 from __future__ import annotations
@@ -19,10 +20,11 @@ import numpy as np
 
 from adbot2 import paths
 from adbot2.capture import lower_priority
-from adbot2.dataset import frame_path, load_manifest
+from adbot2.dataset import load_game_area, load_manifest
+from adbot2.geometry import UnknownLayout, model_view
 
-MODEL = "mnv3s"
-SIZE = (320, 180)
+MODEL = "mnv3s_game"  # embeddings of the canonical model view
+SIZE = (320, 170)
 
 
 def emb_path() -> Path:
@@ -37,10 +39,10 @@ def load_embeddings(path: Path | None = None) -> tuple[list[str], np.ndarray]:
     return list(z["ids"]), z["vecs"]
 
 
-def read_small(p: Path) -> np.ndarray | None:
-    data = np.fromfile(str(p), dtype=np.uint8)
-    img = cv2.imdecode(data, cv2.IMREAD_REDUCED_COLOR_4)
-    if img is None:
+def read_small(rec) -> np.ndarray | None:
+    try:
+        img = model_view(load_game_area(rec, paths.home()))
+    except (UnknownLayout, ValueError, OSError):
         return None
     img = cv2.resize(img, SIZE, interpolation=cv2.INTER_AREA)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -80,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     with ThreadPoolExecutor(4) as pool, torch.inference_mode():
         for i in range(0, len(recs), args.batch):
             chunk = recs[i:i + args.batch]
-            imgs = list(pool.map(lambda r: read_small(frame_path(r, paths.home())), chunk))
+            imgs = list(pool.map(read_small, chunk))
             ok = [(r, im) for r, im in zip(chunk, imgs) if im is not None]
             if not ok:
                 continue

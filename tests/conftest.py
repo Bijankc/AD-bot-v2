@@ -20,3 +20,18 @@ def make_png(tmp_path):
         cv2.imwrite(str(p), img)
         return p
     return _make
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "data: needs the real frames in ADBOT2_HOME (skipped when they are missing)")
+
+
+def pytest_collection_modifyitems(config, items):
+    from adbot2 import paths
+
+    if (paths.home() / "data" / "manifest.jsonl").exists():
+        return
+    skip = pytest.mark.skip(reason="no ADBOT2_HOME data on this machine")
+    for item in items:
+        if "data" in item.keywords:
+            item.add_marker(skip)
