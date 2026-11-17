@@ -42,18 +42,24 @@ const $=id=>document.getElementById(id);
 async function counts(){$('counts').textContent=await (await fetch('/api/counts')).text()}
 async function load(){const q=new URLSearchParams(location.search).get('batch')||'';
  const d=await (await fetch('/api/items?batch='+encodeURIComponent(q))).json();items=d.items;keys=d.keys;
- document.title='Screen labels '+d.batch;i=Math.max(0,items.findIndex(x=>!x.label));show();counts()}
+ batchName=d.batch;document.title='Screen labels '+d.batch;i=Math.max(0,items.findIndex(x=>!x.label));show();counts()}
 function show(){const it=items[i];if(!it){$('bar').textContent='nothing to label';return}
  $('img').src='/img/'+it.id;
  const nx=items.find((x,j)=>j>i&&!x.label);if(nx)pre.src='/img/'+nx.id;
  const done=items.filter(x=>x.label).length;
- $('bar').textContent=`${i+1}/${items.length} (${done} labelled)  ${it.time||it.orig_name}  label: ${it.label||'-'}  hint: ${it.hint||'-'}  ${it.why||''}`;
+ $('bar').textContent=`${batchName}  ${i+1}/${items.length} (${done} labelled)  ${it.time||it.orig_name}  label: ${it.label||'-'}${it.old&&!it.label?' (was '+it.old+')':''}  hint: ${it.hint||'-'}  ${it.why||''}`;
  if(done===items.length){$('bar').textContent+='   BATCH DONE';counts()}
  $('ctx').textContent=(it.context||[]).join('\n');
  $('legend').innerHTML=Object.entries(keys).map(([k,s])=>
   `<div class="k ${it.label===s?'cur':''} ${it.hint===s?'hint':''}"><b>${k}</b>${s}</div>`).join('')}
+let batchName='';
 async function label(s){const it=items[i];await fetch('/api/label',{method:'POST',body:JSON.stringify({id:it.id,screen:s})});
- it.label=s;const n=items.findIndex((x,j)=>j>i&&!x.label);i=n<0?Math.min(i+1,items.length-1):n;show()}
+ it.label=s;const n=items.findIndex((x,j)=>j>i&&!x.label);
+ if(n<0&&items.every(x=>x.label)&&!new URLSearchParams(location.search).get('batch')){
+  const d=await (await fetch('/api/items')).json();   // batch done: on to the next one, if any
+  if(d.batch!==batchName&&d.items.some(x=>!x.label)){items=d.items;batchName=d.batch;document.title='Screen labels '+d.batch;
+   i=items.findIndex(x=>!x.label);show();counts();return}}
+ i=n<0?Math.min(i+1,items.length-1):n;show()}
 document.onkeydown=e=>{if(e.key==='ArrowRight'){i=Math.min(i+1,items.length-1);show()}
  else if(e.key==='ArrowLeft'){i=Math.max(i-1,0);show()}
  else if(e.key==='Enter'&&items[i]&&items[i].hint){label(items[i].hint)}
@@ -77,7 +83,11 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _batch(self, name: str) -> tuple[str, list[dict] | None]:
+    def _since(self, d: dict) -> str | None:
+        """A relabel batch (e.g. a review) counts only labels given after it was made."""
+        return d.get("made") if d.get("relabel") else None
+
+    def _batch(self, name: str) -> tuple[str, dict | None]:
         """(name, [{id, why}]) of a named batch, or (name "") the oldest batch with unlabelled frames, else the
         newest one; items None = every full frame."""
         if name == "all":
@@ -89,9 +99,9 @@ class Handler(BaseHTTPRequestHandler):
         if not files:
             return "all", None
         loaded = [json.loads(f.read_text(encoding="utf-8")) for f in files]
-        todo = [d for d in loaded if any(self.store.get(i["id"]) is None for i in d["items"])]
+        todo = [d for d in loaded if any(self.store.get(i["id"], self._since(d)) is None for i in d["items"])]
         d = todo[0] if todo and not name else loaded[-1]
-        return d["name"], d["items"]
+        return d["name"], d
 
     def do_GET(self):
         url = urlparse(self.path)
@@ -100,13 +110,16 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/items":
             manifest = load_manifest(self.manifest)
             name, batch = self._batch(parse_qs(url.query).get("batch", [""])[0])
+            since = None
             if batch is None:
                 recs = sorted((r for r in manifest.values() if r.full_frame), key=lambda r: (r.time or "", r.id))
                 pairs = [(r, None) for r in recs]
             else:
-                pairs = [(manifest[b["id"]], b.get("why")) for b in batch if b["id"] in manifest]
+                since = self._since(batch)
+                pairs = [(manifest[b["id"]], b.get("why")) for b in batch["items"] if b["id"] in manifest]
             items = [{"id": r.id, "orig_name": r.orig_name, "time": r.time, "hint": r.hint, "context": r.context,
-                      "why": why, "label": self.store.get(r.id)} for r, why in pairs]
+                      "why": why, "label": self.store.get(r.id, since), "old": self.store.get(r.id)}
+                     for r, why in pairs]
             keys = {k: s.value for k, s in HOTKEYS.items()}
             return self._send(200, json.dumps({"batch": name, "items": items, "keys": keys}).encode(),
                               "application/json")

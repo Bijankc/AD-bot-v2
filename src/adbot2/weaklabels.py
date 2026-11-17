@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 
 from adbot2.oldlog import LogLine
 
-F_AUTO, F_DIM = "fight_auto", "fight_dimension"
+F_AUTO = F_DIM = "fight"  # one fight class; rule names keep the mode
 
 
 @dataclass(frozen=True)
@@ -57,22 +57,23 @@ RULES: list[Rule] = [
     # Waiting places
     _r("raid_closed", r"^(raid still closed, waiting|waiting until \d+:\d+, then Create)", "raid_world", "hold",
        a=1.0, b=2.0, max_s=600),
+    # the teleport and the fight start up to ~60 s before the old bot logs anything (17 Nov labels: 1 of 9 right)
     _r("gf_queued", r"^Group Finder: (queued, waiting for the raid|raid open, waiting for the teleport)", "lobby",
-       "hold", a=2.0, b=3.0, max_s=600),
+       "hold", a=2.0, b=60.0, max_s=600),
+    _r("inf_reset", r"^leaving Infinity \(", "respawn", "hold", a=2.0, b=1.5, max_s=60),
     _r("party", r"^PARTY, Start in", "party", "hold", a=0.5, b=1.0, max_s=60),
     # Results
     _r("titan_results", r"^Titan: run over after \d+ s \(results\)", "results_dimension", "hold", a=0.3, b=0.5, max_s=6),
-    _r("titan_results_ocr", r"^Titan results: ", "results_dimension", "at", 1.0, 0.3),
     _r("titan_retry", r"^Titan: (pressing RETRY|LEAVE \()", "results_dimension", "at", 1.5, 0.0),
-    _r("inf_leave", r"^Infinity results: pressing LEAVE", "results_infinity", "at", 2.0, 0.0),
+    _r("inf_leave", r"^Infinity results: pressing LEAVE", "results_infinity", "at", 0.6, 0.0),
     _r("inf_ended", r"^Infinity ended by itself", "results_infinity", "hold", a=0.3, b=0.5, max_s=5),
     _r("rewards", r"^results: reading rewards", "results_raid", "hold", a=0.3, b=0.5, max_s=5),
     # Menus and windows (at the moment of a click or a find)
     _r("play", r"^pressing PLAY", "lobby", "at", 1.5, 0.0),
     _r("lobby_seen", r"^lobby \(PLAY visible\)", "lobby", "at", 1.0, 0.5),
     _r("modes_menu", r"^modes menu:", "modes_menu", "at", 1.0, 0.3),
-    _r("raid_window", r"^(pressing Create \(raid\)|Create tab|Group Finder tab|looking for .+ Raid in the list|"
-                      r"selecting .+ Raid$|enabling Friends Only|Friends Only)", "raid_window", "at", 1.0, 0.5),
+    _r("raid_window", r"^(pressing Create \(raid\)|Group Finder tab|looking for .+ Raid in the list|"
+                      r"selecting .+ Raid$)", "raid_window", "at", 1.0, 0.5),
     _r("dim_window", r"^(looking for .+ Dimension in the list|selecting .+ Dimension$|Titan: (pressing Create|"
                      r"choosing|Hardcore)|looking for Infinite Mode|selecting Infinite Mode|pressing Create \(infinity\))",
        "dimension_window", "at", 1.0, 0.5),  # Infinite Mode is picked in the Dimension window
@@ -82,8 +83,10 @@ RULES: list[Rule] = [
     _r("restart", r"^(restarting Roblox|launching private server link)", "loading", "at", -3.0, 10.0),
     # State changes with no reliable screen
     _r("break", r"^(waiting \(screen not recognised\)|screen not recognised|death: |Roblox is not responding|stopped|"
-                r"start v|RESTART|in a run \(AUTO|entering Dimension|teleporting|lobby loaded|leaving Infinity|"
-                r"pressing Start)", None, "break"),  # "in a run (AUTO" was logged on a Create window (false AUTO)
+                r"start v|RESTART|in a run \(AUTO|entering Dimension|teleporting|lobby loaded|pressing Start|"
+                r"Titan results: |Create tab|enabling Friends Only|Friends Only)", None, "break"),
+    # "Titan results:" is logged after RETRY (screen already loading); "Create tab" / Friends Only are used in both
+    # the raid and the Dimension window (17 Nov labels)  # "in a run (AUTO" was logged on a Create window (false AUTO)
 ]
 
 # Not state lines: they never end an interval.

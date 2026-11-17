@@ -21,8 +21,9 @@ class Screen(str, Enum):
     SPEED_RAID_WINDOW = "speed_raid_window"  # Speed Raid character picker
     PARTY = "party"                          # party room before Start
     RAID_WORLD = "raid_world"                # raid world, waiting for the raid to open
-    FIGHT_AUTO = "fight_auto"                # Raid / Speed Raid / Infinity fight (has the AUTO button)
-    FIGHT_DIMENSION = "fight_dimension"      # Dimension fight (no AUTO; red enemy count)
+    FIGHT = "fight"                          # any fight (Raid, Speed Raid, Infinity, Dimension); the mode is told
+                                             # apart by the detector (AUTO button, red enemy count), not here
+    RESPAWN = "respawn"                      # dead or resetting inside a run: pink sky, no enemies, "None" for AUTO
     REVIVE = "revive"                        # death screen with REVIVE (never press it: costs gems)
     RESULTS_RAID = "results_raid"            # RAID RESULTS (ranking + rewards)
     RESULTS_INFINITY = "results_infinity"    # Infinity results, RETRY / LEAVE / AUTO RETRY
@@ -43,8 +44,8 @@ HOTKEYS: dict[str, Screen] = {
     "5": Screen.SPEED_RAID_WINDOW,
     "6": Screen.PARTY,
     "7": Screen.RAID_WORLD,
-    "8": Screen.FIGHT_AUTO,
-    "9": Screen.FIGHT_DIMENSION,
+    "8": Screen.FIGHT,
+    "9": Screen.RESPAWN,
     "0": Screen.LOADING,
     "q": Screen.REVIVE,
     "w": Screen.RESULTS_RAID,

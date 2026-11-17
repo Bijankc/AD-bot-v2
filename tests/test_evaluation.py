@@ -47,5 +47,5 @@ def test_score_counts_none_as_wrong():
 
 def test_regression_set_needs_a_human_label():
     cands = [{"id": "a", "case": "white_flash"}, {"id": "b", "case": "revive"}, {"id": "c", "case": "gf_banner"}]
-    reg = regression_set(cands, {"a": "fight_auto", "c": "unsure"})
-    assert reg == [{"id": "a", "case": "white_flash", "screen": "fight_auto"}]
+    reg = regression_set(cands, {"a": "fight", "c": "unsure"})
+    assert reg == [{"id": "a", "case": "white_flash", "screen": "fight"}]

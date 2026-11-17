@@ -52,6 +52,6 @@ def test_read_all_contexts_uses_year_from_file_name(tmp_path):
 
 def test_hints():
     assert screen_hint("raid_end") == "results_raid"
-    assert screen_hint("xboss_leg5_20s") == "fight_dimension"
+    assert screen_hint("xboss_leg5_20s") == "fight"
     assert screen_hint("restart") is None  # a "restart" shot can show any screen
     assert screen_hint(None) is None

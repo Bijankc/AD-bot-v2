@@ -23,9 +23,9 @@ def test_label_store_latest_wins(tmp_path):
     p = tmp_path / "labels" / "screens.jsonl"
     s = LabelStore(p)
     s.set("x", "lobby")
-    s.set("x", "fight_auto")
+    s.set("x", "fight")
     s.set("y", "bag")
-    assert LabelStore(p).all() == {"x": "fight_auto", "y": "bag"}
+    assert LabelStore(p).all() == {"x": "fight", "y": "bag"}
 
 
 def test_file_source(tmp_path, make_png):

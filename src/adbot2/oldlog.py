@@ -93,12 +93,12 @@ def read_all_contexts(bot_dir: Path, keep: int = 4) -> dict[str, ShotContext]:
 REASON_HINTS: dict[str, str] = {
     "raid_end": "results_raid",
     "raid_rewards": "results_raid",
-    "raid_world": "raid_world",
-    "titan_start": "fight_dimension",
+    "raid_world": "modes_menu",  # taken as the RAID card is pressed (17 Nov labels: 13 of 13)
+    "titan_start": "fight",
 }
 REASON_PREFIX_HINTS: dict[str, str] = {
-    "titan_leg": "fight_dimension",
-    "xboss_leg": "fight_dimension",
+    "titan_leg": "fight",
+    "xboss_leg": "fight",
 }
 
 

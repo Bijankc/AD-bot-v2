@@ -4,6 +4,7 @@ r"""Register the frame logger's captures in the frame store, with weak screen hi
 
 Frames stay where the logger wrote them (no copies); the manifest points at captures/<day>/<file>. Only frames older
 than --settle-min are taken, so the log already shows what came after them. Safe to run again (new frames only).
+With --rehint, hints of every stored frame are recomputed from the current rules (after a rule or class change).
 Read-only on the old bot's folder; each log file is opened and closed at once.
 """
 
@@ -17,9 +18,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from adbot2 import paths
-from adbot2.dataset import FrameRecord, append_jsonl, load_manifest
+from adbot2.dataset import FrameRecord, append_jsonl, load_manifest, rewrite_manifest
 from adbot2.geometry import layout_of
 from adbot2.oldlog import read_all_lines
+from adbot2.oldlog import screen_hint
 from adbot2.weaklabels import HintIndex, context_at, intervals
 
 
@@ -60,8 +62,23 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--bot-dir", required=True, type=Path)
     ap.add_argument("--settle-min", type=float, default=15.0)
+    ap.add_argument("--rehint", action="store_true", help="recompute the hints of all stored frames first")
     args = ap.parse_args(argv)
     lines = read_all_lines(args.bot_dir)
+    if args.rehint:
+        man = load_manifest(paths.manifest_path())
+        hints = HintIndex(intervals(lines))
+        changed = Counter()
+        for r in man.values():
+            if r.root == "captures":
+                new = hints.at(datetime.fromisoformat(r.time))
+            else:
+                new = (screen_hint(r.reason), None)
+            if (r.hint, r.rule) != new:
+                changed[f"{r.hint} -> {new[0]}"] += 1
+                r.hint, r.rule = new
+        rewrite_manifest(paths.manifest_path(), list(man.values()))
+        print("rehinted: " + (", ".join(f"{k} {v}" for k, v in changed.most_common()) or "no change"))
     known = set(load_manifest(paths.manifest_path()))
     recs = new_records(paths.home() / "captures", known, lines, datetime.now() - timedelta(minutes=args.settle_min))
     append_jsonl(paths.manifest_path(), [asdict(r) for r in recs])

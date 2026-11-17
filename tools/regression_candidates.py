@@ -110,11 +110,12 @@ def main(argv: list[str] | None = None) -> int:
         (gf if k and t - gf_times[k - 1] < timedelta(minutes=20) else solo).append((fid, t))
     found["results_raid"] += spread(solo, PER_CASE // 2)
     found["results_raid_gf"] += spread(gf, PER_CASE)
-    found["auto_font"] += spread([(r.id, t_of[r.id]) for r in caps if r.hint == "fight_auto" and r.dpi == 96], 3, 600)
-    found["auto_font"] += spread([(r.id, t_of[r.id]) for r in caps if r.hint == "fight_auto" and r.dpi == 144], 3, 600)
+    auto_rules = ("raid_auto", "speed_auto", "inf_auto", "not_dying")
+    for dpi in (96, 144):
+        found["auto_font"] += spread([(r.id, t_of[r.id]) for r in caps if r.rule in auto_rules and r.dpi == dpi], 3, 600)
 
     # very bright fight frames: a jump from the previous frame = flash, bright neighbours too = floor
-    fights = [r for r in caps if r.hint in ("fight_auto", "fight_dimension")]
+    fights = [r for r in caps if r.hint == "fight"]
     wf = {r.id: white_fraction(r) for r in fights}
     flash, floor = [], []
     for prev, cur, nxt in zip(fights, fights[1:], fights[2:]):

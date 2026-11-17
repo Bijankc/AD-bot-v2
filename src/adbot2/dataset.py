@@ -97,6 +97,15 @@ def import_image(src: Path, raw_dir: Path, manifest: Path, source: str, *, time:
     return rec, True
 
 
+def rewrite_manifest(path: Path, recs: list[FrameRecord]) -> None:
+    """Replace the manifest with one row per record (atomic: a crash leaves the old file)."""
+    tmp = path.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        for r in recs:
+            f.write(json.dumps(asdict(r), ensure_ascii=False) + "\n")
+    tmp.replace(path)
+
+
 class LabelStore:
     """Screen labels: append-only JSONL, latest row per id wins."""
 
@@ -106,9 +115,12 @@ class LabelStore:
         for r in read_jsonl(path):
             self._latest[r["id"]] = r
 
-    def get(self, fid: str) -> str | None:
+    def get(self, fid: str, since: str | None = None) -> str | None:
+        """Latest label; with `since` (ISO time), only a label given at or after it."""
         r = self._latest.get(fid)
-        return r["screen"] if r else None
+        if not r or (since and r.get("at", "") < since):
+            return None
+        return r["screen"]
 
     def set(self, fid: str, screen: str, by: str = "human") -> None:
         row = {"id": fid, "screen": screen, "by": by, "at": datetime.now().isoformat(timespec="seconds")}

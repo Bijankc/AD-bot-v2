@@ -119,3 +119,15 @@ def test_frame_logger_index_and_pid(tmp_path):
     assert fl.other_logger_running(pid) == 0  # that is us
     pid.write_text("999999999")
     assert fl.other_logger_running(pid) == 0  # no such process
+
+
+def test_review_batch_counts_only_new_labels(server):
+    url, labels, batches, raw_id, cap_id = server
+    req = urllib.request.Request(url + "/api/label", data=json.dumps({"id": raw_id, "screen": "other"}).encode(),
+                                 method="POST")
+    urllib.request.urlopen(req)
+    batches.mkdir()
+    (batches / "review_x.json").write_text(json.dumps({"name": "review_x", "made": "2999-01-01T00:00:00",
+                                                       "relabel": True, "items": [{"id": raw_id}]}))
+    d = get_json(url + "/api/items")
+    assert d["batch"] == "review_x" and d["items"][0]["label"] is None and d["items"][0]["old"] == "other"

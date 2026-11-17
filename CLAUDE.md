@@ -71,3 +71,13 @@ no user names, no server links, no paths under the user profile.
 - `tools/evaluate.py --predictor hint|knn` writes `reports\<time>_<pred>\` (report.md, confusion CSVs, worst/*.jpg,
   confidently wrong first). `hint` = the old bot's own belief, a baseline worth knowing in itself.
 - The labelling page opens the oldest batch that still has unlabelled frames.
+
+## Screen classes (changed 17 Nov after the first labels)
+
+- One `fight` class (key 8) for every mode; the mode comes from the detector (AUTO button, red enemy count). New
+  `respawn` (key 9): dead or resetting inside a run (pink sky, no enemies, "None" where AUTO is). Old labels were
+  merged with `by: merge_fight_classes` rows; backups of the manifest and labels from before are in `data\`.
+- Rules the first 120 labels proved wrong and were fixed: old-bot "raid_world" shots show the modes menu; "Titan
+  results:" is logged after RETRY (loading); the GF queue hint must stop ~60 s before the next log line; "Create tab"
+  and Friends Only appear in both windows. `tools/import_captures.py --rehint` recomputes every stored hint.
+- Review batches (`"relabel": true` in the batch file) count only labels given after the batch was made.
