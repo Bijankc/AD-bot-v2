@@ -71,6 +71,25 @@ def test_label_server_roundtrip(server):
     assert "lobby              1" in urllib.request.urlopen(url + "/api/counts").read().decode()
 
 
+def test_crop_grid_roundtrip(server, tmp_path):
+    import numpy as np
+
+    from adbot2.crops import HEADS, CropCache, CropLabels
+
+    url, labels, _, raw_id, cap_id = server
+    home = tmp_path / "home"
+    crops = {k: np.zeros((2, h.store_wh[1], h.store_wh[0], 3), np.uint8) for k, h in HEADS.items()}
+    CropCache(home / "cache" / "crops").add("c1", [raw_id, cap_id], crops, [])
+    d = get_json(url + "/api/crop_page?head=auto")
+    assert d["classes"] == ["on", "off", "gone"] and {x["id"] for x in d["items"]} == {raw_id, cap_id}
+    assert {x["id"]: x["value"] for x in d["items"]}[cap_id] == "gone"  # hinted lobby: no AUTO
+    assert urllib.request.urlopen(url + f"/crop/auto/{cap_id}").read()[:4] == b"\x89PNG"
+    body = json.dumps({"head": "auto", "values": {cap_id: "on", raw_id: "bogus"}}).encode()
+    urllib.request.urlopen(urllib.request.Request(url + "/api/crop_labels", data=body, method="POST"))
+    assert CropLabels(labels.parent / "crops.jsonl").of_head("auto") == {cap_id: "on"}
+    assert [x["id"] for x in get_json(url + "/api/crop_page?head=auto")["items"]] == [raw_id]
+
+
 def test_label_server_serves_the_oldest_unfinished_batch(server):
     import os
 

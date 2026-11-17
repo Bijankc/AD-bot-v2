@@ -82,3 +82,11 @@ no user names, no server links, no paths under the user profile.
   results:" is logged after RETRY (loading); the GF queue hint must stop ~60 s before the next log line; "Create tab"
   and Friends Only appear in both windows. `tools/import_captures.py --rehint` recomputes every stored hint.
 - Review batches (`"relabel": true` in the batch file) count only labels given after the batch was made.
+
+## Crop heads (step 5b, `adbot2/crops.py`)
+
+- Fixed UI is read from fixed canonical boxes (one box serves both layouts): `auto` (on/off/gone), `enemies`,
+  `gf_banner`. The "None" sign while dead is on the hotbar, not in the AUTO box.
+- Routine: `tools/cache_crops.py` (new frames only), label at http://127.0.0.1:8765/crops?head=auto (grid, Enter
+  saves the page), `tools/train_crops.py --head auto` (seconds; writes preds.npz that pre-fills the next grid).
+- AUTO acts only on P(off) >= 0.98; the trainer reports ON read as OFF, which must stay 0.

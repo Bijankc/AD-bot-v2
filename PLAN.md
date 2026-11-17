@@ -11,6 +11,12 @@ image templates are used.
 - v2 uses screen reading and normal input only. No exploits or injected scripts. A script the author brings may be read as
   reference text only. It is never run, and nothing from it goes into the repo.
 
+**Scope (17 Nov):** Hourly Raid, Speed Raid, Infinity, Titan and other Dimensions where possible, Extreme Dimension
+on Easy, and Boss Rush only when asked (rarely). Not wanted: Time Challenge, daily claims, codes, gacha and upgrades
+(the user does those; the bot only recognises and closes them).
+Research and the reading plan: docs/RESEARCH.md (fixed UI = crop heads, digits = own reader, detector only for moving
+things).
+
 ## Starting point
 
 **Hardware:** RTX 4060 Laptop GPU with 8 GB VRAM, driver 621.01 (supports CUDA 13.x). i7-14700HX (20 cores), 16 GB RAM.
@@ -129,3 +135,8 @@ and anything with your username never go into the repo; small commits; ask befor
 
   Speed on the 4060: 7 ms to shrink a 1080p frame + 12 ms on the GPU (17 ms CPU) via ONNX Runtime. Weak spots: Speed
   Raid window (no train examples yet), respawn, raid_world shots. No 150% frames are labelled on a held-out day yet.
+- **17 Nov, step 5b (crop heads, started):** fixed UI is read from fixed boxes by tiny CNNs (`crops.py`; 0.1 M
+  weights, ~0.4 ms per crop on the CPU): AUTO (on / off / gone), ENEMIES LEFT diamond, Group Finder banner. All
+  19,841 frames cut once into a cache (2 min). Labelling is a grid of 60 pre-filled crops (`/crops` on the labelling
+  page): fix the wrong tiles, Enter. First models are trained on rule guesses only; they already find the OFF
+  diamond. Next: crop labels, then the enemy-count digit reader.
