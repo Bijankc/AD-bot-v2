@@ -66,8 +66,8 @@ def test_raid_auto_logged_again_on_the_results_is_not_a_fight():
 
 
 def test_conflicting_overlap_gives_no_hint():
-    lines = log((0, "pressing PLAY"), (0.5, "Infinity results: pressing LEAVE"))
-    assert hint(lines, -0.05) is None  # PLAY covers -1.5..0, LEAVE -0.1..0.5
+    lines = log((0, "Infinity results: pressing LEAVE"), (0.2, "pressing PLAY"))
+    assert hint(lines, 0.1) is None  # LEAVE covers 0..0.4, PLAY -1.3..0.2
 
 
 def test_context_marks_lines_after_the_frame():
@@ -83,4 +83,7 @@ def test_rules_fixed_by_the_first_labels():
     lines = log((0, "Group Finder: queued, waiting for the raid"), (100, "waiting (screen not recognised), goal: raid"))
     assert hint(lines, 30) == "lobby" and hint(lines, 50) is None   # the raid starts ~a minute before the log says
     lines = log((0, "leaving Infinity (raid): Esc-R-Enter"), (22, "Infinity results: pressing LEAVE"))
-    assert hint(lines, 10) == "respawn" and hint(lines, 21.7) == "results_infinity"
+    assert hint(lines, 10) == "dead" and hint(lines, 21.97) == "dead"   # log has whole seconds
+    assert hint(lines, 22.2) == "results_infinity"
+    assert match_rule("Extreme Dimension: Easy").screen == "extreme_window"
+    assert match_rule("Extreme Dimension (Titan): waiting for the results").screen == "fight"

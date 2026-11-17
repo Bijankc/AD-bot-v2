@@ -60,12 +60,14 @@ RULES: list[Rule] = [
     # the teleport and the fight start up to ~60 s before the old bot logs anything (17 Nov labels: 1 of 9 right)
     _r("gf_queued", r"^Group Finder: (queued, waiting for the raid|raid open, waiting for the teleport)", "lobby",
        "hold", a=2.0, b=60.0, max_s=600),
-    _r("inf_reset", r"^leaving Infinity \(", "respawn", "hold", a=2.0, b=1.5, max_s=60),
+    # Esc-R-Enter kills the character: dead (not respawning) until the results; the log has whole seconds, so the
+    # results line's second can still be dead (17 Nov labels: 5 of 5 dead, up to 0.03 s before "pressing LEAVE")
+    _r("inf_reset", r"^leaving Infinity \(", "dead", "hold", a=2.0, b=0.0, max_s=60),
     _r("party", r"^PARTY, Start in", "party", "hold", a=0.5, b=1.0, max_s=60),
     # Results
     _r("titan_results", r"^Titan: run over after \d+ s \(results\)", "results_dimension", "hold", a=0.3, b=0.5, max_s=6),
     _r("titan_retry", r"^Titan: (pressing RETRY|LEAVE \()", "results_dimension", "at", 1.5, 0.0),
-    _r("inf_leave", r"^Infinity results: pressing LEAVE", "results_infinity", "at", 0.6, 0.0),
+    _r("inf_leave", r"^Infinity results: pressing LEAVE", "results_infinity", "at", 0.0, 0.4),
     _r("inf_ended", r"^Infinity ended by itself", "results_infinity", "hold", a=0.3, b=0.5, max_s=5),
     _r("rewards", r"^results: reading rewards", "results_raid", "hold", a=0.3, b=0.5, max_s=5),
     # Menus and windows (at the moment of a click or a find)
@@ -77,6 +79,7 @@ RULES: list[Rule] = [
     _r("dim_window", r"^(looking for .+ Dimension in the list|selecting .+ Dimension$|Titan: (pressing Create|"
                      r"choosing|Hardcore)|looking for Infinite Mode|selecting Infinite Mode|pressing Create \(infinity\))",
        "dimension_window", "at", 1.0, 0.5),  # Infinite Mode is picked in the Dimension window
+    _r("extreme_window", r"^Extreme Dimension: (Easy|Normal|Nightmare|Extreme)\b", "extreme_window", "at", 1.0, 0.5),
     _r("bag", r"^loadout \d+ -> \d+", "bag", "at", 1.0, 0.3),
     _r("speed_window", r"^Speed Raid: (looking for a free character|start \(character)", "speed_raid_window", "at",
        1.0, 0.0),

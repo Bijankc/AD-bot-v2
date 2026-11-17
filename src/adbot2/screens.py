@@ -19,6 +19,7 @@ class Screen(str, Enum):
     RAID_WINDOW = "raid_window"              # raid Join / Create / Group Finder window
     DIMENSION_WINDOW = "dimension_window"    # Dimension Join / Create window
     SPEED_RAID_WINDOW = "speed_raid_window"  # Speed Raid character picker
+    EXTREME_WINDOW = "extreme_window"        # Extreme Dimension "Select Difficulty" window (Easy..Extreme, Start)
     PARTY = "party"                          # party room before Start
     RAID_WORLD = "raid_world"                # raid world, waiting for the raid to open
     FIGHT = "fight"                          # any fight (Raid, Speed Raid, Infinity, Dimension); the mode is told
@@ -43,6 +44,7 @@ HOTKEYS: dict[str, Screen] = {
     "3": Screen.RAID_WINDOW,
     "4": Screen.DIMENSION_WINDOW,
     "5": Screen.SPEED_RAID_WINDOW,
+    "x": Screen.EXTREME_WINDOW,
     "6": Screen.PARTY,
     "7": Screen.RAID_WORLD,
     "8": Screen.FIGHT,

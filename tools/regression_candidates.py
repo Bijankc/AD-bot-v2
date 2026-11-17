@@ -33,7 +33,7 @@ REASON_CASES = {
     "auto_blind": "auto_font", "auto_missing": "auto_font", "auto_colour_stuck": "auto_font",
     "gf_banner": "gf_banner", "gf_gone": "gf_banner", "gf_fallback": "gf_banner",
     "raid_end": "results_raid", "raid_rewards": "results_raid", "leave": "results_infinity",
-    "xdim_win": "results_dimension", "titan_dead": "results_dimension", "dim_died": "revive",
+"titan_dead": "results_dimension", "dim_died": "revive",
 }
 
 

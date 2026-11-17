@@ -95,6 +95,7 @@ REASON_HINTS: dict[str, str] = {
     "raid_rewards": "results_raid",
     "raid_world": "modes_menu",  # taken as the RAID card is pressed (17 Nov labels: 13 of 13)
     "titan_start": "fight",
+    "xdim_win": "extreme_window",  # 17 Nov labels: 3 of 3
 }
 REASON_PREFIX_HINTS: dict[str, str] = {
     "titan_leg": "fight",
