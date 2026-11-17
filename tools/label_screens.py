@@ -78,15 +78,19 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _batch(self, name: str) -> tuple[str, list[dict] | None]:
-        """(name, [{id, why}]) of a named batch or the newest one (name ""); items None = every full frame."""
+        """(name, [{id, why}]) of a named batch, or (name "") the oldest batch with unlabelled frames, else the
+        newest one; items None = every full frame."""
         if name == "all":
             return "all", None
-        files = sorted(self.batches.glob("*.json")) if self.batches.is_dir() else []
+        files = sorted(self.batches.glob("*.json"), key=lambda f: (f.stat().st_mtime, f.name)) \
+            if self.batches.is_dir() else []
         if name:
             files = [f for f in files if f.stem == name]
         if not files:
             return "all", None
-        d = json.loads(files[-1].read_text(encoding="utf-8"))
+        loaded = [json.loads(f.read_text(encoding="utf-8")) for f in files]
+        todo = [d for d in loaded if any(self.store.get(i["id"]) is None for i in d["items"])]
+        d = todo[0] if todo and not name else loaded[-1]
         return d["name"], d["items"]
 
     def do_GET(self):

@@ -71,15 +71,22 @@ def test_label_server_roundtrip(server):
     assert "lobby              1" in urllib.request.urlopen(url + "/api/counts").read().decode()
 
 
-def test_label_server_serves_the_newest_batch(server):
-    url, _, batches, raw_id, cap_id = server
+def test_label_server_serves_the_oldest_unfinished_batch(server):
+    import os
+
+    url, labels, batches, raw_id, cap_id = server
     batches.mkdir()
-    (batches / "20261117_0900.json").write_text(json.dumps({"name": "20261117_0900", "items": [{"id": raw_id}]}))
-    (batches / "20261117_1000.json").write_text(json.dumps(
-        {"name": "20261117_1000", "items": [{"id": cap_id, "why": "diverse"}, {"id": "gone"}]}))
-    d = get_json(url + "/api/items")
-    assert d["batch"] == "20261117_1000" and [(x["id"], x["why"]) for x in d["items"]] == [(cap_id, "diverse")]
-    assert get_json(url + "/api/items?batch=20261117_0900")["items"][0]["id"] == raw_id
+    old, new = batches / "20261117_0900.json", batches / "regression_20261117_1000.json"
+    old.write_text(json.dumps({"name": "20261117_0900", "items": [{"id": raw_id}]}))
+    new.write_text(json.dumps({"name": "regression_20261117_1000", "items": [{"id": cap_id, "why": "r"}, {"id": "x"}]}))
+    os.utime(old, (1, 1))  # made first
+    assert get_json(url + "/api/items")["batch"] == "20261117_0900"
+    req = urllib.request.Request(url + "/api/label", data=json.dumps({"id": raw_id, "screen": "bag"}).encode(),
+                                 method="POST")
+    urllib.request.urlopen(req)
+    d = get_json(url + "/api/items")  # the first one is done: on to the next
+    assert d["batch"] == "regression_20261117_1000" and [(x["id"], x["why"]) for x in d["items"]] == [(cap_id, "r")]
+    assert get_json(url + "/api/items?batch=20261117_0900")["items"][0]["label"] == "bag"
 
 
 def test_label_server_rejects_unknown_class_and_traversal(server):

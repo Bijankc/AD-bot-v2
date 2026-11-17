@@ -57,3 +57,17 @@ no user names, no server links, no paths under the user profile.
   ~1 min for 11k frames on the GPU), `tools/pick_batch.py` (120 frames: kNN-uncertain + diverse/balanced, >=10 s apart),
   then the user labels at http://127.0.0.1:8765 (`tools/label_screens.py`, start hidden with pythonw).
   `tools/pick_batch.py --report` prints class counts and per-rule hint agreement.
+
+## Evaluation (step 4, `adbot2/evaluation.py`, `tools/evaluate.py`)
+
+- Split by session = one farm day (noon to noon) of one layout; per layout sessions take turns train, test, val, train,
+  train. Frozen in `data\splits.json` (never edit by hand to move a session). Val/test frames within 3 min of a train
+  frame of the same layout are "guard" and not scored. First session plan: 100% 14 Nov train, 17 Nov morning test;
+  150% 14-15 Nov night train, the next 150% night test.
+- Regression set: `tools/regression_candidates.py` proposes frames per named case (old-bot shot reasons, log moments,
+  very bright fight frames) as a batch; a candidate counts once the user labels it. No log marker exists for Revive,
+  only-LEAVE results or (since GF) the raid clock: those come from labelling / kNN later.
+  "Auto: off" lines exist only in older logs; Auto-off frames are the ones just before "Auto pressed (try N)".
+- `tools/evaluate.py --predictor hint|knn` writes `reports\<time>_<pred>\` (report.md, confusion CSVs, worst/*.jpg,
+  confidently wrong first). `hint` = the old bot's own belief, a baseline worth knowing in itself.
+- The labelling page opens the oldest batch that still has unlabelled frames.

@@ -111,3 +111,6 @@ and anything with your username never go into the repo; small commits; ask befor
 - **17 Nov, step 3 (game area):** `geometry.py` maps 100%, 150% and old-bot screen grabs to one canonical frame and blanks
   everything outside the game band. Bottom UI aligns within 1 px; top-anchored UI (HP panel) is 29 px higher and 0.95x at
   150%, so readers must not use one fixed box. 8 mid-resize frames excluded. Embeddings redone on the canonical view.
+- **17 Nov, step 4 (evaluation):** frozen split by farm day and layout with a 3-min guard band; per-class accuracy,
+  confusion, worst examples to `C:\adbot2\reports\`; 13 named regression cases from the old bot's failures, 91
+  candidates proposed (none yet for only-LEAVE results and the raid clock; 1 for Revive). Numbers wait for labels.
