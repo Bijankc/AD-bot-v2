@@ -43,26 +43,29 @@ HOLD = dict(a=1.0, b=2.0)
 RULES: list[Rule] = [
     # Auto fights (Raid, Speed Raid, Infinity)
     _r("raid_auto", r"^raid: Auto, waiting for the end", F_AUTO, "hold", **HOLD, max_s=600),
-    _r("speed_auto", r"^Speed Raid: Auto, waiting for the end", F_AUTO, "hold", **HOLD, max_s=900),
+    # the teleport into a Speed Raid is still loading a few seconds after this line (17 Nov labels)
+    _r("speed_auto", r"^Speed Raid: Auto, waiting for the end", F_AUTO, "hold", a=5.0, b=2.0, max_s=900),
     # An Infinity run on Auto is ~30 silent minutes; its results can show a few seconds before LEAVE.
     _r("inf_auto", r"^Infinity: (the game's Auto plays|ENEMIES LEFT did not change)", F_AUTO, "hold", a=1.0, b=5.0,
        max_s=2400),
     _r("not_dying", r"^enemies are not dying", F_AUTO, "hold", **HOLD, max_s=300),
     # Dimension fights
     _r("titan_fight", r"^Titan: (route leg|clearing after leg|leg \d+|fighting|boss|run begins|opening route|"
-                      r"Shift Lock|reset|walking on|teleport gate|\S+ left and not coming|route done)", F_DIM, "hold",
+                      r"Shift Lock|walking on|teleport gate|\S+ left and not coming|route done)", F_DIM, "hold",
        **HOLD, max_s=120),
+    _r("titan_reset", r"^Titan: reset", "respawn", "hold", a=1.0, b=2.0, max_s=12),
     _r("dim_wait", r"^(Extreme Dimension \(Titan\)|Death Dimension): waiting for the results", F_DIM, "hold",
        **HOLD, max_s=60),
     # Waiting places
     _r("raid_closed", r"^(raid still closed, waiting|waiting until \d+:\d+, then Create)", "raid_world", "hold",
        a=1.0, b=2.0, max_s=600),
-    # the teleport and the fight start up to ~60 s before the old bot logs anything (17 Nov labels: 1 of 9 right)
+    # the queue teleports to the raid world within ~10 s and the old bot logs nothing until much later
+    # (17 Nov labels: raid_world at +10 s and +21 s, loading at +88 s)
     _r("gf_queued", r"^Group Finder: (queued, waiting for the raid|raid open, waiting for the teleport)", "lobby",
-       "hold", a=2.0, b=60.0, max_s=600),
-    # Esc-R-Enter kills the character: dead (not respawning) until the results; the log has whole seconds, so the
-    # results line's second can still be dead (17 Nov labels: 5 of 5 dead, up to 0.03 s before "pressing LEAVE")
-    _r("inf_reset", r"^leaving Infinity \(", "dead", "hold", a=2.0, b=0.0, max_s=60),
+       "hold", a=1.0, b=2.0, max_s=4),
+    # Esc-R-Enter: respawn screen for ~3-11 s, then dead (no offer) until the results ~20 s in (17 Nov labels);
+    # only the respawn part is hinted, the switch to dead varies
+    _r("inf_reset", r"^leaving Infinity \(", "respawn", "hold", a=2.5, b=0.0, max_s=9),
     _r("party", r"^PARTY, Start in", "party", "hold", a=0.5, b=1.0, max_s=60),
     # Results
     _r("titan_results", r"^Titan: run over after \d+ s \(results\)", "results_dimension", "hold", a=0.3, b=0.5, max_s=6),
@@ -75,19 +78,19 @@ RULES: list[Rule] = [
     _r("lobby_seen", r"^lobby \(PLAY visible\)", "lobby", "at", 1.0, 0.5),
     _r("modes_menu", r"^modes menu:", "modes_menu", "at", 1.0, 0.3),
     _r("raid_window", r"^(pressing Create \(raid\)|Group Finder tab|looking for .+ Raid in the list|"
-                      r"selecting .+ Raid$)", "raid_window", "at", 1.0, 0.5),
+                      r"selecting .+ Raid$)", "raid_window", "at", 1.0, 0.0),
     _r("dim_window", r"^(looking for .+ Dimension in the list|selecting .+ Dimension$|Titan: (pressing Create|"
                      r"choosing|Hardcore)|looking for Infinite Mode|selecting Infinite Mode|pressing Create \(infinity\))",
        "dimension_window", "at", 1.0, 0.5),  # Infinite Mode is picked in the Dimension window
     _r("extreme_window", r"^Extreme Dimension: (Easy|Normal|Nightmare|Extreme)\b", "extreme_window", "at", 1.0, 0.5),
     _r("bag", r"^loadout \d+ -> \d+", "bag", "at", 1.0, 0.3),
-    _r("speed_window", r"^Speed Raid: (looking for a free character|start \(character)", "speed_raid_window", "at",
-       1.0, 0.0),
+    # "start (character" is logged once the screen is already loading (17 Nov labels: 4 of 4)
+    _r("speed_window", r"^Speed Raid: looking for a free character", "speed_raid_window", "at", 1.0, 0.0),
     _r("restart", r"^(restarting Roblox|launching private server link)", "loading", "at", -3.0, 10.0),
     # State changes with no reliable screen
     _r("break", r"^(waiting \(screen not recognised\)|screen not recognised|death: |Roblox is not responding|stopped|"
                 r"start v|RESTART|in a run \(AUTO|entering Dimension|teleporting|lobby loaded|pressing Start|"
-                r"Titan results: |Create tab|enabling Friends Only|Friends Only)", None, "break"),
+                r"Speed Raid: start \(character|Titan results: |Create tab|enabling Friends Only|Friends Only)", None, "break"),
     # "Titan results:" is logged after RETRY (screen already loading); "Create tab" / Friends Only are used in both
     # the raid and the Dimension window (17 Nov labels)  # "in a run (AUTO" was logged on a Create window (false AUTO)
 ]

@@ -81,9 +81,13 @@ def test_rules_fixed_by_the_first_labels():
     assert match_rule("Titan results: REWARDS Time: 4:45").screen is None
     assert match_rule("Create tab").screen is None
     lines = log((0, "Group Finder: queued, waiting for the raid"), (100, "waiting (screen not recognised), goal: raid"))
-    assert hint(lines, 30) == "lobby" and hint(lines, 50) is None   # the raid starts ~a minute before the log says
+    assert hint(lines, 3) == "lobby" and hint(lines, 30) is None
     lines = log((0, "leaving Infinity (raid): Esc-R-Enter"), (22, "Infinity results: pressing LEAVE"))
-    assert hint(lines, 10) == "dead" and hint(lines, 21.97) == "dead"   # log has whole seconds
+    assert hint(lines, 5) == "respawn" and hint(lines, 18) is None   # respawn first, then dead for a varying time
     assert hint(lines, 22.2) == "results_infinity"
+    lines = log((0, "Group Finder: queued, waiting for the raid"), (100, "waiting (screen not recognised), goal: raid"))
+    assert hint(lines, 3) == "lobby" and hint(lines, 9) is None    # the raid world is ~10 s away
+    assert match_rule("Titan: reset (0 left)").screen == "respawn"
+    assert match_rule("Speed Raid: start (character x=1 y=2, run 5 of 9)").screen is None
     assert match_rule("Extreme Dimension: Easy").screen == "extreme_window"
     assert match_rule("Extreme Dimension (Titan): waiting for the results").screen == "fight"
