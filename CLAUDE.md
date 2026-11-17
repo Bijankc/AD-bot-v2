@@ -1,0 +1,39 @@
+# AD Bot v2: working notes
+
+Python rewrite of the AutoHotkey farming bot (sibling folder `..\AD-bot`, whose CLAUDE.md is the behaviour spec and the
+source of regression tests). Public repo, Apache-2.0. Plan and milestones: PLAN.md. Keep this file short and public-safe:
+no user names, no server links, no paths under the user profile.
+
+## Hard rules
+
+- The old bot farms while v2 is built. v2 sends **no input** to Roblox and never focuses, moves, restarts or closes it or the
+  old bot, until the user says so for a given night (old bot stopped). Never edit `..\AD-bot`.
+- Read the old bot's `raid.log` with a quick open/close only (a `tail -f` once blocked its writes for hours).
+- Nothing pops up: detached jobs use `pythonw`, scripts open no windows. Big jobs: below-normal priority, leave 2 GB VRAM
+  for Roblox, watch the old bot's log while they run, ask before anything over ~1 h.
+- Privacy: never commit `*.ini`, logs, screenshots, captures, reports or weights trained on the user's frames. Stage
+  explicit paths only (`git add <file>`, never `-A`) and read `git status` before every commit. Ask before every push.
+- No cheats, no executors. No code or image templates from upstream AD-bot (no licence). Keep the credit line in README.
+
+## Where things are
+
+- Data root `ADBOT2_HOME` (default `C:\adbot2`, outside OneDrive, never in git): `venv\`, `data\` (frame store,
+  `manifest.jsonl`, `labels\`), `captures\<yyyymmdd>\` (logger frames + `index.csv`), `reports\`.
+- Tests: `C:\adbot2\venv\Scripts\python.exe -m pytest -q` (synthetic data only, fast).
+
+## Frame logger (`tools/frame_logger.py`)
+
+- Start hidden: `Start-Process C:\adbot2\venv\Scripts\pythonw.exe -ArgumentList '"tools\frame_logger.py"'
+  -WorkingDirectory <repo> -WindowStyle Hidden`. The venv's pythonw is a launcher; the worker is a second pythonw at
+  BelowNormal. A `captures\logger.pid` lock stops a second copy. Stop: create `captures\STOP`.
+- Check `captures\logger.log` each session ("alive" line every 10 min; crashes are logged there with a traceback).
+- Saves only while Roblox is the foreground window. JPEG q92 4:4:4 (~450 KB), a PNG every 5 min, 15 GB per run, stops
+  under 15 GB free. Index column `kind`: first | change | periodic | png.
+- Lesson (17 Nov): the game is rarely static (median frame-to-frame change 61/255 on 8.4k frames), so thinning compares
+  against the last 20 saves, not just the last one; static screens back off 20 s -> 160 s.
+- Each session also run `tools/import_old_shots.py --bot-dir ..\AD-bot` (the old bot keeps only its newest 100 shots).
+
+## Screen geometry
+
+- 100% layout: client 1920x1017 at (0,23). 150% (lid shut at night): 1920x1046 at (0,-6); the logger clips to the screen,
+  so 150% frames are saved as 1920x1040 at (0,0) (top 6 rows missing). The index records rect and DPI per frame.

@@ -67,3 +67,24 @@ def test_label_server_rejects_unknown_class_and_traversal(server):
     assert e.value.code == 400
     with pytest.raises(urllib.error.HTTPError):
         urllib.request.urlopen(url + "/img/..%5C..%5Cm.jsonl")
+
+
+def test_frame_logger_index_and_pid(tmp_path):
+    import os
+    import frame_logger as fl
+
+    day = tmp_path / "20261117"
+    day.mkdir()
+    (day / "index.csv").write_text("time,file,left,top,width,height,dpi,change\nx,y,0,0,1,1,96,1\n")
+    fl.append_index(day, ["t", "a.jpg", 0, 23, 1920, 1017, 96, "7.0", "change"])
+    fl.append_index(day, ["t", "b.png", 0, 23, 1920, 1017, 96, "0.0", "png"])
+    assert (day / "index.v1.csv").exists()  # the old layout was moved aside, not mixed
+    lines = (day / "index.csv").read_text().splitlines()
+    assert lines[0] == ",".join(fl.INDEX_HEADER) and len(lines) == 3
+
+    pid = tmp_path / "logger.pid"
+    assert fl.other_logger_running(pid) == 0  # no file
+    pid.write_text(str(os.getpid()))
+    assert fl.other_logger_running(pid) == 0  # that is us
+    pid.write_text("999999999")
+    assert fl.other_logger_running(pid) == 0  # no such process

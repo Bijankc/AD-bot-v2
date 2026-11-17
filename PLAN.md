@@ -17,8 +17,8 @@ image templates are used.
 The CUDA toolkit is not installed, and it is not needed because PyTorch and onnxruntime wheels ship their own CUDA runtime.
 Python 3.14, 3.10 and 3.7 are installed.
 - 8 GB is enough to train small detectors (YOLO-n/s class at 640-960 px) and to run them in a few ms with TensorRT or ONNX-CUDA.
-- **Disk is the main limit: only 22.9 GB is free on C:.** PyTorch with CUDA is about 3-5 GB, TensorRT about 2 GB more, and the
-  datasets grow over time.
+- Disk (14 Nov): only 22.9 GB free on C:. **17 Nov: no longer the main limit** (~45 GB free, more to come); jobs keep a
+  15 GB floor so Windows and Roblox never run out.
 - **The repo sits in OneDrive.** The venv, the datasets and the raw captures must not sync, so they go outside OneDrive in
   `C:\adbot2\` (venv, data, captures, models). Only code, configs and tiny test fixtures stay in the repo.
 
@@ -69,8 +69,9 @@ chosen with you, GitHub repo created after your answer on visibility, venv in `C
 
 **M1 Reliable screen reading, tested offline.**
 - `capture/`: one interface for live frames and for files or clips, so every test runs on saved data.
-- **Passive frame logger** (needs your OK to run): saves the Roblox window about every 2 s and whenever the screen changes,
+- **Passive frame logger** (running since 14 Nov): saves the Roblox window about every 2 s and whenever the screen changes,
   while the AHK bot farms. It is read-only: no input, no focus change. Frames go to `C:\adbot2\captures\`, de-duplicated.
+  17 Nov: 15 GB per run, JPEG q92 4:4:4, near-duplicate thinning against the last 20 saves, a PNG every 5 min.
   The old bot's `raid.log` is then joined by timestamp to pre-label them.
 - Labelling workflow: (a) a local sorting page (one key per screen class) for classifier labels; (b) boxes in an
   off-the-shelf tool such as X-AnyLabeling or Label Studio (to pick with you), pre-filled by the current model so you only fix
@@ -98,3 +99,9 @@ off. The enemy count and boss HP check progress. Recorded runs are used for eval
 ## Rules kept throughout
 No input to Roblox and no Roblox process actions unless you say so; tests never open windows or dialogs; the server link
 and anything with your username never go into the repo; small commits; ask before every push.
+
+## Progress
+
+- **14-15 Nov:** M0 done. Frame logger ran overnight: 8,441 frames, 0 capture failures, stopped at its 3 GB budget.
+- **17 Nov, step 1 (data flowing):** logger limits raised and thinning added (see M1); restarted hidden at below-normal
+  priority. Old-bot shot import re-run (store 198 frames).

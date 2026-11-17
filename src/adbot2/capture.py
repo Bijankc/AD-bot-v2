@@ -57,7 +57,12 @@ def lower_priority() -> None:
 def _process_name(hwnd: int) -> str:
     pid = wt.DWORD()
     user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-    h = kernel32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
+    return process_exe(pid.value)
+
+
+def process_exe(pid: int) -> str:
+    """Lower-case exe name of a running process, or "" if there is none (or it cannot be opened)."""
+    h = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
     if not h:
         return ""
     try:
