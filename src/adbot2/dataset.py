@@ -30,6 +30,17 @@ class FrameRecord:
     reason: str | None = None  # old bot's screenshot reason
     hint: str | None = None    # suggested screen class (weak)
     context: list[str] | None = None  # old bot's log lines before the shot
+    root: str = "raw"          # "raw": file is in raw_dir; "captures": file is <day>/<name> under the captures dir
+    rect: list[int] | None = None  # captured client rect (left, top, width, height), physical pixels
+    dpi: int | None = None
+    rule: str | None = None    # weak-label rule that gave the hint
+
+
+def frame_path(rec: FrameRecord, home: Path) -> Path:
+    """Where a record's image lives (home = ADBOT2_HOME)."""
+    if rec.root == "captures":
+        return home / "captures" / rec.file
+    return home / "data" / "raw" / rec.file
 
 
 def file_id(path: Path) -> str:

@@ -37,3 +37,17 @@ no user names, no server links, no paths under the user profile.
 
 - 100% layout: client 1920x1017 at (0,23). 150% (lid shut at night): 1920x1046 at (0,-6); the logger clips to the screen,
   so 150% frames are saved as 1920x1040 at (0,0) (top 6 rows missing). The index records rect and DPI per frame.
+
+## Weak labels and labelling (step 2)
+
+- `adbot2/weaklabels.py`: the old bot logs a line when its state *changes*, so a state line holds until the next one
+  (hold rules: settle after, lead before a screen change, max length; at rules: just before a click; break rules: end
+  intervals, no hint). Unknown lines end intervals; known chatter is in `INFO`. Conflicts = no hint.
+- Lessons from the log: an Infinity run is ~30 silent minutes; Infinite Mode is picked in the Dimension window;
+  "raid: Auto, waiting for the end" is logged again on the results screen after "results: reading rewards";
+  "in a run (AUTO button on screen)" was logged on a Create window (false AUTO), so it gives no hint.
+- Session routine: `tools/import_old_shots.py --bot-dir ..\AD-bot`, `tools/import_captures.py --bot-dir ..\AD-bot`
+  (frames older than 15 min, not copied; manifest points at captures), `tools/embed_frames.py` (MobileNet-V3-small,
+  ~1 min for 11k frames on the GPU), `tools/pick_batch.py` (120 frames: kNN-uncertain + diverse/balanced, >=10 s apart),
+  then the user labels at http://127.0.0.1:8765 (`tools/label_screens.py`, start hidden with pythonw).
+  `tools/pick_batch.py --report` prints class counts and per-rule hint agreement.

@@ -36,37 +36,61 @@ def test_import_old_shots(tmp_path, make_png, monkeypatch):
 
 @pytest.fixture
 def server(tmp_path, make_png):
-    from adbot2.dataset import import_image
-    raw, man, labels = tmp_path / "raw", tmp_path / "m.jsonl", tmp_path / "l.jsonl"
-    import_image(make_png("a.png", value=3), raw, man, "t")
+    from dataclasses import asdict
+
+    from adbot2.dataset import FrameRecord, append_jsonl, import_image
+    home = tmp_path / "home"
+    raw, man, labels, batches = home / "data" / "raw", tmp_path / "m.jsonl", tmp_path / "l.jsonl", tmp_path / "b"
+    a, _ = import_image(make_png("a.png", value=3), raw, man, "t")
     import_image(make_png("crop.png", size=(100, 50), value=4), raw, man, "t")
-    srv = label_screens.make_server(0, raw, man, labels)
+    make_png("090000_000.jpg", value=9, folder=home / "captures" / "20261117")
+    cap = FrameRecord("cap20261117_090000_000", "20261117/090000_000.jpg", "capture", "090000_000.jpg", 1920, 1080,
+                      True, "2026-11-17T09:00:00.000", "change", "lobby", ["09:00:00 pressing PLAY"], "captures")
+    append_jsonl(man, [asdict(cap)])
+    srv = label_screens.make_server(0, home, man, labels, batches)
     th = threading.Thread(target=srv.serve_forever, daemon=True)
     th.start()
-    yield f"http://127.0.0.1:{srv.server_address[1]}", labels
+    yield f"http://127.0.0.1:{srv.server_address[1]}", labels, batches, a.id, cap.id
     srv.shutdown()
 
 
+def get_json(url):
+    return json.load(urllib.request.urlopen(url))
+
+
 def test_label_server_roundtrip(server):
-    url, labels = server
-    items = json.load(urllib.request.urlopen(url + "/api/items"))["items"]
-    assert len(items) == 1  # crops are not offered for screen labels
-    img = urllib.request.urlopen(url + "/img/" + items[0]["file"]).read()
-    assert img[:4] == b"\x89PNG"
-    req = urllib.request.Request(url + "/api/label", data=json.dumps({"id": items[0]["id"], "screen": "lobby"}).encode(),
+    url, labels, _, raw_id, cap_id = server
+    d = get_json(url + "/api/items")
+    assert d["batch"] == "all" and [x["id"] for x in d["items"]] == [raw_id, cap_id]  # no crops
+    assert urllib.request.urlopen(url + "/img/" + raw_id).read()[:4] == b"\x89PNG"
+    assert len(urllib.request.urlopen(url + "/img/" + cap_id).read()) > 100  # served from captures/
+    req = urllib.request.Request(url + "/api/label", data=json.dumps({"id": cap_id, "screen": "lobby"}).encode(),
                                  method="POST")
     urllib.request.urlopen(req)
-    assert LabelStore(labels).get(items[0]["id"]) == "lobby"
+    assert LabelStore(labels).get(cap_id) == "lobby"
+    assert "lobby              1" in urllib.request.urlopen(url + "/api/counts").read().decode()
+
+
+def test_label_server_serves_the_newest_batch(server):
+    url, _, batches, raw_id, cap_id = server
+    batches.mkdir()
+    (batches / "20261117_0900.json").write_text(json.dumps({"name": "20261117_0900", "items": [{"id": raw_id}]}))
+    (batches / "20261117_1000.json").write_text(json.dumps(
+        {"name": "20261117_1000", "items": [{"id": cap_id, "why": "diverse"}, {"id": "gone"}]}))
+    d = get_json(url + "/api/items")
+    assert d["batch"] == "20261117_1000" and [(x["id"], x["why"]) for x in d["items"]] == [(cap_id, "diverse")]
+    assert get_json(url + "/api/items?batch=20261117_0900")["items"][0]["id"] == raw_id
 
 
 def test_label_server_rejects_unknown_class_and_traversal(server):
-    url, _ = server
+    url = server[0]
     req = urllib.request.Request(url + "/api/label", data=b'{"id": "x", "screen": "nope"}', method="POST")
     with pytest.raises(urllib.error.HTTPError) as e:
         urllib.request.urlopen(req)
     assert e.value.code == 400
-    with pytest.raises(urllib.error.HTTPError):
-        urllib.request.urlopen(url + "/img/..%5C..%5Cm.jsonl")
+    for bad in ("/img/..%5C..%5Cm.jsonl", "/img/../m.jsonl", "/img/nope"):
+        with pytest.raises(urllib.error.HTTPError):
+            urllib.request.urlopen(url + bad)
 
 
 def test_frame_logger_index_and_pid(tmp_path):

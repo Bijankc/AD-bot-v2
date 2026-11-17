@@ -111,3 +111,24 @@ def screen_hint(reason: str | None) -> str | None:
         if reason.startswith(prefix):
             return hint
     return None
+
+
+def log_files(bot_dir: Path) -> list[tuple[Path, int]]:
+    """(file, year) for logs/raid_*.log and raid.log, oldest first."""
+    out = []
+    for f in sorted((bot_dir / "logs").glob("raid_*.log")):
+        m = re.search(r"(\d{4})\d{4}", f.name)
+        out.append((f, int(m.group(1)) if m else datetime.fromtimestamp(f.stat().st_mtime).year))
+    live = bot_dir / "raid.log"
+    if live.exists():
+        out.append((live, datetime.fromtimestamp(live.stat().st_mtime).year))
+    return out
+
+
+def read_all_lines(bot_dir: Path) -> list[LogLine]:
+    """Every timestamped line of the old bot's logs, sorted by time (each file opened and closed at once)."""
+    lines: list[LogLine] = []
+    for f, year in log_files(bot_dir):
+        lines.extend(read_log(f, year))
+    lines.sort(key=lambda ln: ln.time)
+    return lines

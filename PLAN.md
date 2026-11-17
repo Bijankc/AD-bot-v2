@@ -105,3 +105,6 @@ and anything with your username never go into the repo; small commits; ask befor
 - **14-15 Nov:** M0 done. Frame logger ran overnight: 8,441 frames, 0 capture failures, stopped at its 3 GB budget.
 - **17 Nov, step 1 (data flowing):** logger limits raised and thinning added (see M1); restarted hidden at below-normal
   priority. Old-bot shot import re-run (store 198 frames).
+- **17 Nov, step 2 (weak labels and batches):** log lines turned into screen intervals (`weaklabels.py`); 10,731
+  captures registered with hints (89% hinted: mostly fights, as expected; rare screens are rare). Embeddings for all
+  10,911 frames in 59 s on the GPU. Batch picker and batch mode on the labelling page. First batch (120) waiting for labels.
