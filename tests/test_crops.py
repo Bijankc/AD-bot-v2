@@ -78,3 +78,15 @@ def test_pick_page_puts_disagreements_first_and_spreads_values():
     assert sum(i.startswith("off") for i in ids) == 3  # the rare value is shown in full
     times = sorted(c.time for c in page)
     assert all((b - a).total_seconds() >= 4 for a, b in zip(times, times[1:]))
+
+
+def test_chunked_array_indexes_like_one_array():
+    from adbot2.crops import ChunkedArray
+
+    a, b = np.arange(6).reshape(3, 2), np.arange(6, 10).reshape(2, 2)
+    c = ChunkedArray([a, b])
+    whole = np.concatenate([a, b])
+    assert len(c) == 5 and c.shape == (5, 2)
+    assert (c[3] == whole[3]).all() and (c[-1] == whole[-1]).all()
+    assert (c[[4, 0, 2]] == whole[[4, 0, 2]]).all() and (c[1:4] == whole[1:4]).all()
+    assert (np.asarray(c) == whole).all()

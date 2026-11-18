@@ -75,6 +75,37 @@ def model_input(crops: np.ndarray, head: CropHead) -> np.ndarray:
 # ---------------------------------------------------------------- cache
 
 
+class ChunkedArray:
+    """Several memory-mapped arrays indexed as one along the first axis, without copying them into RAM
+    (concatenating the cache chunks took ~1 GB per head; 18 Nov RAM dipped near the 4 GB floor)."""
+
+    def __init__(self, arrays: list[np.ndarray]):
+        self.arrays = arrays
+        self.starts = np.cumsum([0] + [len(a) for a in arrays])
+        self.shape = (int(self.starts[-1]),) + tuple(arrays[0].shape[1:])
+        self.dtype = arrays[0].dtype
+
+    def __len__(self) -> int:
+        return self.shape[0]
+
+    def _one(self, k: int) -> np.ndarray:
+        k = int(k) + (len(self) if k < 0 else 0)
+        c = int(np.searchsorted(self.starts, k, side="right")) - 1
+        return self.arrays[c][k - self.starts[c]]
+
+    def __getitem__(self, idx):
+        if isinstance(idx, tuple):  # arr[k, y, x, c]: pick along the first axis, then index the rest
+            return self[idx[0]][idx[1:]] if isinstance(idx[0], (int, np.integer)) else self[idx[0]][(slice(None),) + idx[1:]]
+        if isinstance(idx, (int, np.integer)):
+            return self._one(idx)
+        if isinstance(idx, slice):
+            idx = range(*idx.indices(len(self)))
+        return np.stack([self._one(k) for k in idx]) if len(idx) else np.zeros((0,) + self.shape[1:], self.dtype)
+
+    def __array__(self, dtype=None, copy=None):
+        return np.asarray(self[:], dtype=dtype)
+
+
 class CropCache:
     """Cached crops: <dir>/<chunk>/ids.json + <head>.npy, one chunk per tools/cache_crops.py run (incremental)."""
 
@@ -106,7 +137,7 @@ class CropCache:
         if not arrays:
             w, h = HEADS[head].store_wh if head in HEADS else (1, 1)
             return [], np.zeros((0, h, w, 3), np.uint8)
-        return ids, np.concatenate(arrays) if len(arrays) > 1 else np.asarray(arrays[0])
+        return ids, arrays[0] if len(arrays) == 1 else ChunkedArray(arrays)
 
     def add(self, name: str, ids: list[str], crops: dict[str, np.ndarray], skipped: list[str]) -> Path:
         c = self.folder / name

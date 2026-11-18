@@ -23,6 +23,7 @@ import numpy as np
 from adbot2 import paths
 from adbot2.crops import HEADS, cut
 from adbot2.dataset import load_game_area, load_manifest
+from adbot2.evaluation import layout_key
 from adbot2.oldlog import read_all_lines
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
@@ -57,11 +58,12 @@ def main(argv: list[str] | None = None) -> int:
         earlier = k > 0 and (t - press[k - 1]).total_seconds() <= after
         return later or earlier
 
-    stats = {g: [0, 0, 0, 0] for g in ("held-out", "train")}   # fight, false off, before press, seen off
+    stats: dict[str, list[int]] = {}   # group -> fight, false off, before press, seen off
     false_off = []
     for i, ts, p in zip(ids, tstr, auto):
         rec = man[i]
-        g = "train" if split.get(i) == "train" else "held-out"
+        g = f"{'train' if split.get(i) == 'train' else 'held-out'} {layout_key(rec)}"
+        stats.setdefault(g, [0, 0, 0, 0])
         t = datetime.fromisoformat(ts)
         if near_press(t, 2.5, 0.0):
             stats[g][2] += 1
@@ -71,8 +73,8 @@ def main(argv: list[str] | None = None) -> int:
             if p[off] >= AUTO_OFF_ACT:
                 stats[g][1] += 1
                 false_off.append((float(p[off]), i, t))
-    for g, (fight, fo, bp, so) in stats.items():
-        print(f"{g:8}: Auto fights {fight} frames, {fo} read as OFF at P >= {AUTO_OFF_ACT}; "
+    for g, (fight, fo, bp, so) in sorted(stats.items()):
+        print(f"{g:14}: Auto fights {fight} frames, {fo} read as OFF at P >= {AUTO_OFF_ACT}; "
               f"just before the old bot pressed Auto: {so} of {bp} read as OFF")
     for p, i, t in sorted(false_off, reverse=True)[:10]:
         print(f"  {t:%d.%m %H:%M:%S} P(off) {p:.3f}  {i}")
