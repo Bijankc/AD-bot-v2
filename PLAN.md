@@ -177,3 +177,10 @@ and anything with your username never go into the repo; small commits; ask befor
   the first model read every OFF before a press as only 36-86% OFF, so the 0.98 act threshold was never reached.
   Cause: label smoothing (caps every probability near 0.97) and only 12 OFF examples. Now no smoothing and the
   presses' OFF frames at full weight: held-out OFF caught 13 / 15, false OFF 0 in 1,507 Auto-fight frames.
+- **18 Nov, M2 started (decisions only, no input):** `tracker.py` turns observations into stable facts (screen
+  "unknown" = wait; Auto off = 3 confident frames in a row *during a fight*; count after 2 agreeing reads, cleared
+  after 0 holds 4 s; raid time after two clock readings agree). `policy.py`: first slice = Infinity loop + the raid
+  hour (raid > Infinity, leave Infinity at 57:30 raid time). `tools/shadow.py` replays 109 h of frames through both and
+  compares with the old bot's own actions: Infinity LEAVE 20 / 24 the same; PLAY for the raid / Speed Raid, Start (it
+  is inside the Dimension window: needs a Start-button reader) and "entering Dimension" (logged after the click) not
+  yet; reset must only apply to an Infinity fight, so the policy needs to remember which mode it entered.
