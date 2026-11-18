@@ -11,6 +11,8 @@ no user names, no server links, no paths under the user profile.
 - Read the old bot's `raid.log` with a quick open/close only (a `tail -f` once blocked its writes for hours).
 - Nothing pops up: detached jobs use `pythonw`, scripts open no windows. Big jobs: below-normal priority, leave 2 GB VRAM
   for Roblox, watch the old bot's log while they run, ask before anything over ~1 h.
+- Bound memory: decode frames in small batches, never all at once, and stop under 4 GB free RAM (18 Nov: a replay
+  that decoded every frame up front used up the RAM and Roblox crashed mid-farm).
 - Privacy: never commit `*.ini`, logs, screenshots, captures, reports or weights trained on the user's frames. Stage
   explicit paths only (`git add <file>`, never `-A`) and read `git status` before every commit. Ask before every push.
 - No cheats, no executors. No code or image templates from upstream AD-bot (no licence). Keep the credit line in README.

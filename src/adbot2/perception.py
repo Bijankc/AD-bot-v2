@@ -29,6 +29,7 @@ class Observation:
     screen_probs: np.ndarray | None = None
     auto: str | None = None          # on | off | gone
     auto_p_off: float = 0.0
+    auto_probs: np.ndarray | None = None   # in the head's class order (on, off, gone)
     enemies: bool | None = None      # ENEMIES LEFT diamond shown
     enemy_count: int | None = None
     gf_banner: bool | None = None
@@ -77,6 +78,7 @@ class Perception:
             p = m.probs(cut(img, m.head))[0]
             o.auto = m.classes[int(p.argmax())]
             o.auto_p_off = float(p[m.classes.index("off")])
+            o.auto_probs = p
         if "enemies" in self.heads:
             m = self.heads["enemies"]
             c = cut(img, m.head)
