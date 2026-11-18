@@ -248,13 +248,12 @@ class OnnxCropModel:
     """An exported head (model.onnx + meta.json in one folder), run with onnxruntime."""
 
     def __init__(self, folder: Path, gpu: bool = False):
-        import onnxruntime as ort
+        from adbot2.screen_model import ort_session
 
         meta = json.loads((folder / "meta.json").read_text(encoding="utf-8"))
         self.head = HEADS[meta["head"]]
         self.classes: list[str] = meta["classes"]
-        prov = ["CUDAExecutionProvider", "CPUExecutionProvider"] if gpu else ["CPUExecutionProvider"]
-        self.sess = ort.InferenceSession(str(folder / "model.onnx"), providers=prov)
+        self.sess = ort_session(folder / "model.onnx", gpu, threads=1)
         self.inp = self.sess.get_inputs()[0].name
 
     def probs(self, crops: np.ndarray) -> np.ndarray:

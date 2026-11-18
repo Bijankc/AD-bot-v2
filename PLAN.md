@@ -152,3 +152,8 @@ and anything with your username never go into the repo; small commits; ask befor
   under that lag are used). Single readings on held-out days: 55 right, 6 wrong; with the old bot's rule (accept a
   raid time only when two readings agree) 17 accepted, 0 wrong. More menu frames will sharpen single readings.
   The Group Finder banner clock (smaller font) is not done yet; the menu clock already gives the opening second.
+- **18 Nov, perception step (`perception.py`):** one call per frame gives screen, AUTO (with the safe "is off" test,
+  P(off) >= 0.98), enemy diamond + count, GF banner and the menu clock. 17 ms per frame on real frames (p95 20 ms on
+  the CPU) while Roblox is busy in front, at below-normal priority: within the 50 ms budget, GPU not needed.
+  Lesson: onnxruntime's default thread pool (one spinning thread per core) stalled to ~100 ms next to the game;
+  4 threads without spinning fixed it. CUDA needs `onnxruntime.preload_dlls()` (no install).

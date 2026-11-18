@@ -35,6 +35,30 @@ def to_tensor_array(small_bgr: np.ndarray) -> np.ndarray:
     return np.ascontiguousarray(x.transpose(0, 3, 1, 2))
 
 
+_dlls_loaded = False
+
+
+def ort_session(model: Path, gpu: bool, threads: int):
+    """An onnxruntime session with few threads and no spin-waiting (many spinning threads stall badly next to a busy
+    game, 17 -> ~100 ms per frame on 18 Nov). For the GPU, CUDA's DLLs are preloaded from the installed wheels
+    (without that, onnxruntime only finds them after torch was imported)."""
+    global _dlls_loaded
+    import onnxruntime as ort
+
+    if gpu and not _dlls_loaded:
+        try:
+            ort.preload_dlls()
+        except Exception:  # noqa: BLE001 - CPU still works
+            pass
+        _dlls_loaded = True
+    so = ort.SessionOptions()
+    so.intra_op_num_threads = threads
+    so.inter_op_num_threads = 1
+    so.add_session_config_entry("session.intra_op.allow_spinning", "0")
+    prov = ["CUDAExecutionProvider", "CPUExecutionProvider"] if gpu else ["CPUExecutionProvider"]
+    return ort.InferenceSession(str(model), sess_options=so, providers=prov)
+
+
 def build(n_classes: int, pretrained: bool = True):
     import torch.nn as nn
     from torchvision.models import MobileNet_V3_Large_Weights, mobilenet_v3_large
@@ -47,12 +71,9 @@ def build(n_classes: int, pretrained: bool = True):
 class OnnxScreenModel:
     """Runs an exported model (model.onnx + classes.json in one folder) with onnxruntime."""
 
-    def __init__(self, folder: Path, gpu: bool = True):
-        import onnxruntime as ort
-
+    def __init__(self, folder: Path, gpu: bool = True, threads: int = 4):
         self.classes: list[str] = json.loads((folder / "classes.json").read_text(encoding="utf-8"))
-        prov = ["CUDAExecutionProvider", "CPUExecutionProvider"] if gpu else ["CPUExecutionProvider"]
-        self.sess = ort.InferenceSession(str(folder / "model.onnx"), providers=prov)
+        self.sess = ort_session(folder / "model.onnx", gpu, threads)
         self.inp = self.sess.get_inputs()[0].name
 
     def probs(self, small_bgr: np.ndarray) -> np.ndarray:

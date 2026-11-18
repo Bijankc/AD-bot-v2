@@ -18,3 +18,12 @@ def test_tensor_is_normalised_rgb():
     t = to_tensor_array(x)
     assert t.shape == (1, 3, INPUT_H, INPUT_W) and t.dtype == np.float32
     assert t[0, 0].mean() > 2 and t[0, 2].mean() < -1    # red channel high, blue low
+
+
+def test_perception_without_models(tmp_path):
+    import numpy as np
+
+    from adbot2.perception import Perception
+
+    o = Perception(tmp_path).observe(np.zeros((1080, 1920, 3), np.uint8))  # no models yet: empty fields, no crash
+    assert o.screen is None and o.auto is None and o.enemy_count is None and not o.auto_is_off
