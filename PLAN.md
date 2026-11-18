@@ -87,6 +87,18 @@ chosen with you, GitHub repo created after your answer on visibility, venv in `C
   turns Auto off); enemy count exact on 99%+ of frames; no false "lobby" or LEAVE on white flashes or bright floors (the
   failures in CLAUDE.md become named regression tests).
 
+**M1 scorecard** (held-out sessions only; updated as numbers move):
+
+| Criterion | Target | Now (18 Nov) | Status |
+|---|---|---|---|
+| Screen accuracy, 100% layout | 99%+ | 97% test (69 frames), 94% val | not yet: more labels |
+| Screen accuracy, 150% layout | 99%+ | no held-out 150% labels yet | waiting for a 150% test night (18-19 Nov) |
+| AUTO ON never read as OFF | 0 | 0 at the act threshold (P(off) >= 0.98); 4 at plain argmax on test | holds at threshold; needs more OFF labels |
+| Enemy count exact | 99%+ of frames | 99.97% read, 160 / 160 checked by eye | met on stored frames; needs a held-out labelled check |
+| Raid clock | no wrong raid time | 17 accepted, 0 wrong (two agreeing readings) | met so far |
+| Regression failures | 0 | 3 (2 GF banner, 1 Revive) | not yet |
+| Time per frame | < 50 ms | 17 ms (p95 20 ms) on the CPU with Roblox busy | met |
+
 **M2 State machine and shadow mode.** Rewrite the decision rules in CLAUDE.md (raid clock and `raidOfs`, Group Finder
 queue, one raid an hour, restart rules, hang checks) as plain, tested Python. Clip-replay tests: recorded frame sequences
 → expected transitions. Then shadow mode live (read-only) next to the AHK bot.
@@ -157,3 +169,7 @@ and anything with your username never go into the repo; small commits; ask befor
   the CPU) while Roblox is busy in front, at below-normal priority: within the 50 ms budget, GPU not needed.
   Lesson: onnxruntime's default thread pool (one spinning thread per core) stalled to ~100 ms next to the game;
   4 threads without spinning fixed it. CUDA needs `onnxruntime.preload_dlls()` (no install).
+- **18 Nov, smoothing measured** (`tools/smoothing_eval.py` on the 17 Nov replay, 197 labelled held-out frames):
+  one frame 94.9% (10 wrong); filtered with a 1 s half-life 98.8% when it commits (2 wrong) and "unknown" on 15.7%.
+  Stored frames are ~2 s apart, so longer memories only lag real changes (3 s: 12 wrong). Live frames come ~0.3 s
+  apart, so the unknown share should drop there; the half-life is in seconds and carries over.

@@ -114,15 +114,15 @@ def main(argv: list[str] | None = None) -> int:
     for r, area in batches():
         if area is None:
             continue
-            o = per.observe(area)
-            rows["ids"].append(r.id)
-            rows["time"].append(r.time)
-            rows["screen_probs"].append(o.screen_probs if o.screen_probs is not None else np.zeros(len(classes)))
-            rows["auto_probs"].append(o.auto_probs if o.auto_probs is not None else np.zeros(3))
-            rows["enemies"].append(bool(o.enemies))
-            rows["count"].append(-1 if o.enemy_count is None else o.enemy_count)
-            rows["gf"].append(bool(o.gf_banner))
-            rows["clock"].append(-1 if o.menu_clock is None else o.menu_clock[0] * 60 + o.menu_clock[1])
+        o = per.observe(area)
+        rows["ids"].append(r.id)
+        rows["time"].append(r.time)
+        rows["screen_probs"].append(o.screen_probs if o.screen_probs is not None else np.zeros(len(classes)))
+        rows["auto_probs"].append(o.auto_probs if o.auto_probs is not None else np.zeros(3))
+        rows["enemies"].append(bool(o.enemies))
+        rows["count"].append(-1 if o.enemy_count is None else o.enemy_count)
+        rows["gf"].append(bool(o.gf_banner))
+        rows["clock"].append(-1 if o.menu_clock is None else o.menu_clock[0] * 60 + o.menu_clock[1])
     new = {"ids": np.array(rows["ids"]), "time": np.array(rows["time"]),
            "screen_probs": np.array(rows["screen_probs"], np.float16), "auto_probs": np.array(rows["auto_probs"],
                                                                                               np.float16),
