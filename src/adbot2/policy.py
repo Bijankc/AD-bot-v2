@@ -53,7 +53,9 @@ def goal(now: float, facts: Facts, s: Settings) -> str:
     return "infinity" if s.infinity else "raid"
 
 
-def decide(now: float, facts: Facts, s: Settings | None = None) -> Action:
+def decide(now: float, facts: Facts, s: Settings | None = None, mode: str | None = None) -> Action:
+    """One decision. `mode` = what the current run was entered as ("infinity", ...), None if not known: reset only
+    ever leaves a run entered as Infinity (a raid or Speed Raid fight near the raid hour must not be left)."""
     s = s or Settings()
     g = goal(now, facts, s)
     rt = raid_time(now, facts.raid_opens_at)
@@ -65,8 +67,8 @@ def decide(now: float, facts: Facts, s: Settings | None = None) -> Action:
     if scr == "fight":
         if facts.auto_off:
             return Action("press_auto", "Auto is off in a fight")
-        if g == "raid" and rt is not None and INF_STOP <= rt < CREATE_FROM:
-            return Action("reset", "the raid opens soon: leave the run (Esc, R, Enter)")
+        if mode == "infinity" and g == "raid" and rt is not None and INF_STOP <= rt < CREATE_FROM:
+            return Action("reset", "the raid opens soon: leave the Infinity run (Esc, R, Enter)")
         return Action("wait", "fighting on Auto")
     if scr == "results_infinity":
         return Action("leave", "Infinity results")
@@ -87,3 +89,20 @@ def decide(now: float, facts: Facts, s: Settings | None = None) -> Action:
     if scr == "party":
         return Action("start", "PARTY: Start")
     return Action("unhandled", f"screen {scr} not in this slice")
+
+
+class Policy:
+    """decide() plus the memory of which mode the current run was entered as."""
+
+    def __init__(self, settings: Settings | None = None, own_mode: bool = True):
+        self.s = settings or Settings()
+        self.mode: str | None = None
+        self.own_mode = own_mode   # False in shadow mode: the mode is set from what the old bot actually entered
+
+    def step(self, now: float, facts: Facts) -> Action:
+        if self.own_mode and facts.screen in ("lobby", "modes_menu", "raid_world"):
+            self.mode = None
+        a = decide(now, facts, self.s, self.mode)
+        if self.own_mode and a.name == "pick_infinite":
+            self.mode = "infinity"
+        return a

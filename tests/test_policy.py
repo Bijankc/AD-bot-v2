@@ -1,4 +1,4 @@
-from adbot2.policy import INF_STOP, Settings, decide, goal, raid_time
+from adbot2.policy import INF_STOP, Policy, Settings, decide, goal, raid_time
 from adbot2.tracker import Facts
 
 OPENS = 2700                 # :45:00
@@ -39,7 +39,17 @@ def test_infinity_loop():
 
 
 def test_leave_before_the_raid_and_wait_when_unsure():
-    assert decide(at(INF_STOP + 5), facts("fight")).name == "reset"
+    assert decide(at(INF_STOP + 5), facts("fight"), mode="infinity").name == "reset"
+    assert decide(at(INF_STOP + 5), facts("fight")).name == "wait"           # not known to be Infinity: stay
     assert decide(at(INF_STOP - 100), facts("lobby")).name == "unhandled"   # raid soon: no new Infinity run
     assert decide(at(20 * 60), facts(None)).name == "wait"
     assert decide(at(20 * 60), facts("esc_menu")).name == "unhandled"
+
+
+def test_policy_remembers_the_mode():
+    p = Policy()
+    p.step(at(20 * 60), facts("dimension_window"))
+    assert p.mode == "infinity"
+    assert p.step(at(INF_STOP + 5), facts("fight")).name == "reset"
+    p.step(at(INF_STOP + 60), facts("lobby"))
+    assert p.mode is None

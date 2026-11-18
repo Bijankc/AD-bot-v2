@@ -25,7 +25,7 @@ import numpy as np
 from adbot2 import paths
 from adbot2.oldlog import read_all_lines
 from adbot2.perception import Observation
-from adbot2.policy import decide
+from adbot2.policy import Policy
 from adbot2.tracker import Tracker
 
 OLD_ACTIONS = [
@@ -38,6 +38,14 @@ OLD_ACTIONS = [
     (re.compile(r"^Infinity results: pressing LEAVE"), "leave"),
 ]
 GAP_S = 30.0
+# what the old bot entered, for the policy's mode memory (v2 does not choose the run in shadow mode)
+ENTERED = [
+    (re.compile(r"^pressing Create \(infinity\)"), "infinity"),
+    (re.compile(r"^Titan: pressing Create"), "titan"),
+    (re.compile(r"^Speed Raid: start \(character"), "speed"),
+    (re.compile(r"^(pressing Create \(raid\)|Group Finder: raid open)"), "raid"),
+    (re.compile(r"^(pressing PLAY|lobby \(PLAY visible\)|restarting Roblox)"), None),
+]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -53,6 +61,15 @@ def main(argv: list[str] | None = None) -> int:
     times = np.array([datetime.fromisoformat(t).timestamp() for t in data["time"].tolist()])
     order = np.argsort(times)
 
+    lines = read_all_lines(args.bot_dir)
+    entered = []
+    for ln in lines:
+        for rx, mode in ENTERED:
+            if rx.search(ln.text):
+                entered.append((ln.time.timestamp(), mode))
+                break
+    entered_t = [t for t, _ in entered]
+
     decisions: list[tuple[float, str]] = []
     tr, prev = None, None
     for k in order:
@@ -60,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         if tr is None or t - prev > GAP_S:
             tr = Tracker(classes)
             tr.facts.raid_opens_at = args.opens
+            pol = Policy(own_mode=False)
         prev = t
         auto = data["auto_probs"][k].astype(np.float32)
         o = Observation(screen_probs=data["screen_probs"][k].astype(np.float32), auto_p_off=float(auto[1]),
@@ -67,11 +85,13 @@ def main(argv: list[str] | None = None) -> int:
                         enemy_count=None if data["count"][k] < 0 else int(data["count"][k]),
                         menu_clock=None if data["clock"][k] < 0 else divmod(int(data["clock"][k]), 60))
         f = tr.update(o, t)
-        decisions.append((t, decide(t, f).name))
+        j = bisect.bisect_right(entered_t, t)
+        pol.mode = entered[j - 1][1] if j else None
+        decisions.append((t, pol.step(t, f).name))
     dt = [t for t, _ in decisions]
 
     old = []
-    for ln in read_all_lines(args.bot_dir):
+    for ln in lines:
         for rx, name in OLD_ACTIONS:
             if rx.search(ln.text):
                 old.append((ln.time.timestamp(), name))
