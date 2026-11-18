@@ -146,3 +146,9 @@ and anything with your username never go into the repo; small commits; ask befor
   by a menu: refused, not guessed); 160 checked by eye, 0 wrong. The count is not monotonic: it flickers (1->0->1
   between waves, 13->18->13), so the bot must never treat one 0 as cleared.
   AUTO head with the first 21 train labels: val 94%, test 55% (rules 5%); more labels needed.
+- **18 Nov, raid clock (modes menu RAID card):** a text-line reader (`textline.py`): text pixels on the dark bar ->
+  glyphs -> nearest example. Digits are labelled by the clock itself: this server's raid opened at :45:00 every hour
+  14-17 Nov, so each frame's countdown is known from its time (the card's text can lag ~5 s, so only digits certain
+  under that lag are used). Single readings on held-out days: 55 right, 6 wrong; with the old bot's rule (accept a
+  raid time only when two readings agree) 17 accepted, 0 wrong. More menu frames will sharpen single readings.
+  The Group Finder banner clock (smaller font) is not done yet; the menu clock already gives the opening second.

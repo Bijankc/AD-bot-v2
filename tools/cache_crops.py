@@ -1,4 +1,4 @@
-"""Cut every crop head's box (adbot2.crops.HEADS) from every stored full frame not yet cached.
+"""Cut every crop head's box (adbot2.crops.HEADS) and text band (adbot2.textline.FIELDS) from every new full frame.
 
     python tools/cache_crops.py            new frames only (one chunk per run)
     python tools/cache_crops.py --rebuild  drop the cache first (after a box changes)
@@ -23,6 +23,7 @@ from adbot2.capture import lower_priority
 from adbot2.crops import HEADS, CropCache, cut
 from adbot2.dataset import load_game_area, load_manifest
 from adbot2.geometry import UnknownLayout
+from adbot2.textline import FIELDS, cut_field
 
 
 def crop_cache() -> CropCache:
@@ -34,7 +35,9 @@ def cut_all(rec) -> dict[str, np.ndarray] | None:
         img = load_game_area(rec, paths.home()).image
     except (UnknownLayout, OSError, ValueError):
         return None
-    return {name: cut(img, h) for name, h in HEADS.items()}
+    out = {name: cut(img, h) for name, h in HEADS.items()}
+    out.update({name: cut_field(img, f) for name, f in FIELDS.items()})
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -55,8 +58,9 @@ def main(argv: list[str] | None = None) -> int:
         results = list(ex.map(cut_all, recs))
     ids = [r.id for r, c in zip(recs, results) if c is not None]
     skipped = [r.id for r, c in zip(recs, results) if c is None]
-    crops = {name: np.stack([c[name] for c in results if c is not None]) if ids else
-             np.zeros((0, h.store_wh[1], h.store_wh[0], 3), np.uint8) for name, h in HEADS.items()}
+    names = list(HEADS) + list(FIELDS)
+    crops = {name: np.stack([c[name] for c in results if c is not None]) if ids else np.zeros((0, 1, 1, 3), np.uint8)
+             for name in names}
     where = cache.add(f"{datetime.now():%Y%m%d_%H%M%S}", ids, crops, skipped)
     mb = sum(a.nbytes for a in crops.values()) / 1e6
     print(f"{len(ids)} frames cached ({len(skipped)} skipped) in {time.time() - t0:.0f} s, {mb:.0f} MB -> {where}")

@@ -104,7 +104,7 @@ class CropCache:
                 ids += json.loads((c / "ids.json").read_text(encoding="utf-8"))["ids"]
                 arrays.append(np.load(f, mmap_mode="r"))
         if not arrays:
-            w, h = HEADS[head].store_wh
+            w, h = HEADS[head].store_wh if head in HEADS else (1, 1)
             return [], np.zeros((0, h, w, 3), np.uint8)
         return ids, np.concatenate(arrays) if len(arrays) > 1 else np.asarray(arrays[0])
 
