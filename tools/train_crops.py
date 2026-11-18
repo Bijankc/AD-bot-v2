@@ -3,7 +3,8 @@
     python tools/train_crops.py --head auto
 
 Train = human crop labels of the train split (weight 1) + rule guesses for unlabelled train frames (capped per value,
-lower weight). The epoch is chosen on val; test is scored once. Writes <ADBOT2_HOME>/models/crops/<head>/<time>/:
+lower weight; AUTO "off" from the old bot's presses at full weight). No label smoothing: it would cap every
+probability below the 0.98 the bot needs to act on OFF. The epoch is chosen on val; test is scored once. Writes <ADBOT2_HOME>/models/crops/<head>/<time>/:
 model.pt, model.onnx, meta.json, metrics.json, train.log and preds.npz (the model's guess for every cached crop, used
 by the grid page to pre-fill and to pick unsure tiles). Small: seconds to a few minutes, < 0.5 GB VRAM.
 
@@ -110,7 +111,9 @@ def run(args, out: Path, log) -> int:
             by_rule[v].append(i)
     for v, lst in by_rule.items():
         rng.shuffle(lst)
-        train += [(i, v, args.rule_weight) for i in lst[:args.rule_cap]]
+        # "off" from the old bot's Auto presses was right on 15 of 15 checked frames (18 Nov): full weight
+        w = 1.0 if (args.head == "auto" and v == "off") else args.rule_weight
+        train += [(i, v, w) for i in lst[:args.rule_cap]]
     held = {s: [(i, v) for i, v in human.items() if split.get(i) == s] for s in ("val", "test")}
     log(f"head {args.head}: train {len(train)} ({sum(1 for t in train if t[2] == 1.0)} human, "
         f"{dict(Counter(v for _, v, _ in train))}), val {len(held['val'])}, test {len(held['test'])}")
@@ -155,7 +158,7 @@ def run(args, out: Path, log) -> int:
             x = augment(batch_x([train[k][0] for k in pick]), nrng)
             y = torch.tensor([cidx[train[k][1]] for k in pick], device=dev)
             w = torch.tensor([train[k][2] for k in pick], device=dev, dtype=torch.float32)
-            loss = (F.cross_entropy(net(torch.from_numpy(x).to(dev)), y, reduction="none", label_smoothing=0.05)
+            loss = (F.cross_entropy(net(torch.from_numpy(x).to(dev)), y, reduction="none")
                     * w).sum() / w.sum()
             opt.zero_grad()
             loss.backward()

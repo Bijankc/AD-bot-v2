@@ -93,7 +93,7 @@ chosen with you, GitHub repo created after your answer on visibility, venv in `C
 |---|---|---|---|
 | Screen accuracy, 100% layout | 99%+ | 97% test (69 frames), 94% val | not yet: more labels |
 | Screen accuracy, 150% layout | 99%+ | no held-out 150% labels yet | waiting for a 150% test night (18-19 Nov) |
-| AUTO ON never read as OFF | 0 | 0 at the act threshold (P(off) >= 0.98); 4 at plain argmax on test | holds at threshold; needs more OFF labels |
+| AUTO ON never read as OFF | 0 | held-out Auto fights: 0 false OFF in 1,507 frames (the 1 OFF reading was a real OFF); real OFF caught 13 / 15 before the old bot's presses | met so far; more OFF labels to raise the catch rate |
 | Enemy count exact | 99%+ of frames | 99.97% read, 160 / 160 checked by eye | met on stored frames; needs a held-out labelled check |
 | Raid clock | no wrong raid time | 17 accepted, 0 wrong (two agreeing readings) | met so far |
 | Regression failures | 0 | 3 (2 GF banner, 1 Revive) | not yet |
@@ -173,3 +173,7 @@ and anything with your username never go into the repo; small commits; ask befor
   one frame 94.9% (10 wrong); filtered with a 1 s half-life 98.8% when it commits (2 wrong) and "unknown" on 15.7%.
   Stored frames are ~2 s apart, so longer memories only lag real changes (3 s: 12 wrong). Live frames come ~0.3 s
   apart, so the unknown share should drop there; the half-life is in seconds and carries over.
+- **18 Nov, AUTO head fixed:** checked against the old bot's own presses (`tools/auto_check.py`, no labels needed):
+  the first model read every OFF before a press as only 36-86% OFF, so the 0.98 act threshold was never reached.
+  Cause: label smoothing (caps every probability near 0.97) and only 12 OFF examples. Now no smoothing and the
+  presses' OFF frames at full weight: held-out OFF caught 13 / 15, false OFF 0 in 1,507 Auto-fight frames.
