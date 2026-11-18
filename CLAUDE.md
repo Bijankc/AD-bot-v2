@@ -90,3 +90,5 @@ no user names, no server links, no paths under the user profile.
 - Routine: `tools/cache_crops.py` (new frames only), label at http://127.0.0.1:8765/crops?head=auto (grid, Enter
   saves the page), `tools/train_crops.py --head auto` (seconds; writes preds.npz that pre-fills the next grid).
 - AUTO acts only on P(off) >= 0.98; the trainer reports ON read as OFF, which must stay 0.
+- Enemy count: `adbot2/digits.py` + `tools/digit_templates.py cluster | name RUN MAP | check`; templates live in
+  `models\digits\` (never committed). The count flickers (0 between waves): debounce it, never act on one 0.

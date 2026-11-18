@@ -140,3 +140,9 @@ and anything with your username never go into the repo; small commits; ask befor
   19,841 frames cut once into a cache (2 min). Labelling is a grid of 60 pre-filled crops (`/crops` on the labelling
   page): fix the wrong tiles, Enter. First models are trained on rule guesses only; they already find the OFF
   diamond. Next: crop labels, then the enemy-count digit reader.
+- **18 Nov, enemy count reader:** the count is red digits on an opaque diamond in a fixed font (every digit 17 px
+  tall), so it is read at native pixels with no OCR or network (`digits.py`): red pixels -> glyphs (touching digits
+  split) -> nearest mean shape, from 24 glyph groups named once. Reads 17,215 of 17,221 crops (the 6 unread are dimmed
+  by a menu: refused, not guessed); 160 checked by eye, 0 wrong. The count is not monotonic: it flickers (1->0->1
+  between waves, 13->18->13), so the bot must never treat one 0 as cleared.
+  AUTO head with the first 21 train labels: val 94%, test 55% (rules 5%); more labels needed.
