@@ -23,6 +23,13 @@ def test_auto_off_needs_three_confident_frames():
     assert not tr.update(obs(auto_p_off=0.99), T0 + 1.2).auto_off
 
 
+def test_auto_off_only_counts_in_a_fight():
+    tr = Tracker(C)
+    lobby = np.array([0.05, 0.95])
+    for k in range(5):
+        assert not tr.update(obs(auto_p_off=0.99, screen_probs=lobby), T0 + k * 0.3).auto_off
+
+
 def test_enemy_count_flicker_and_cleared():
     tr = Tracker(C)
     assert tr.update(obs(enemies=True, enemy_count=1), T0).enemy_count is None   # one reading: not yet

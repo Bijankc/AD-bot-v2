@@ -41,8 +41,9 @@ class Tracker:
         f = self.facts
         if o.screen_probs is not None:
             f.screen, _ = self.screens.update(o.screen_probs, t)
-        # Auto: OFF only after several confident OFF frames in a row; any other frame starts the count again
-        self._off_run = self._off_run + 1 if o.auto_is_off else 0
+        # Auto: OFF only after several confident OFF frames in a row, and only while the screen is a fight: menus and
+        # windows without the AUTO button were the frames the reader came closest to calling OFF (18 Nov: P 0.92-0.97)
+        self._off_run = self._off_run + 1 if (o.auto_is_off and f.screen == "fight") else 0
         f.auto_off = self._off_run >= AUTO_OFF_FRAMES
         # enemy count: agreeing readings; cleared once 0 has held
         if o.enemies:
