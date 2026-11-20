@@ -31,6 +31,7 @@ from adbot2 import paths
 from adbot2.capture import lower_priority
 from adbot2.dataset import LabelStore, load_game_area, load_manifest
 from adbot2.geometry import UnknownLayout
+from adbot2.resources import ram_message, ram_ok
 from adbot2.screen_model import INPUT_H, INPUT_W, build, to_tensor_array, view_small
 from adbot2.screens import Screen
 
@@ -57,8 +58,14 @@ def small_of(rec) -> np.ndarray | None:
 
 
 def load_smalls(recs) -> dict[str, np.ndarray]:
+    """Small views, decoded 256 frames at a time; stops early (fewer frames) under the RAM floor."""
+    out: dict[str, np.ndarray] = {}
     with ThreadPoolExecutor(6) as ex:
-        out = dict(zip((r.id for r in recs), ex.map(small_of, recs)))
+        for k in range(0, len(recs), 256):
+            if not ram_ok():
+                raise SystemExit(ram_message())
+            chunk = recs[k:k + 256]
+            out.update(zip((r.id for r in chunk), ex.map(small_of, chunk)))
     return {k: v for k, v in out.items() if v is not None}
 
 

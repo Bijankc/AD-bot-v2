@@ -26,25 +26,7 @@ from adbot2.capture import lower_priority
 from adbot2.dataset import load_game_area, load_manifest
 from adbot2.geometry import UnknownLayout
 from adbot2.perception import Perception, newest
-
-
-MIN_FREE_GB = 4.0
-
-
-def free_ram_gb() -> float:
-    """Free physical memory (Windows), in GB."""
-    import ctypes
-
-    class MS(ctypes.Structure):
-        _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
-                    ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
-                    ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
-                    ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
-                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
-    m = MS()
-    m.dwLength = ctypes.sizeof(MS)
-    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m))
-    return m.ullAvailPhys / 1e9
+from adbot2.resources import ram_message, ram_ok
 
 
 def models_key(models: Path) -> str:
@@ -105,8 +87,8 @@ def main(argv: list[str] | None = None) -> int:
         once used up the RAM and Roblox crashed)."""
         with ThreadPoolExecutor(4) as ex:
             for k in range(0, len(recs), 16):
-                if k % 512 == 0 and free_ram_gb() < MIN_FREE_GB:
-                    print(f"stopping: only {free_ram_gb():.1f} GB RAM free")
+                if k % 512 == 0 and not ram_ok():
+                    print(ram_message())
                     return
                 chunk = recs[k:k + 16]
                 yield from zip(chunk, ex.map(load, chunk))

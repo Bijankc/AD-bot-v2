@@ -22,6 +22,7 @@ from adbot2 import paths
 from adbot2.capture import lower_priority
 from adbot2.dataset import load_game_area, load_manifest
 from adbot2.geometry import UnknownLayout, model_view
+from adbot2.resources import ram_message, ram_ok
 
 MODEL = "mnv3s_game"  # embeddings of the canonical model view
 SIZE = (320, 170)
@@ -74,6 +75,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{len(have)} cached, {len(recs)} to embed on {device}")
     if not recs:
         return 0
+    if not ram_ok():
+        print(ram_message())
+        return 2
     model = build_model(device)
     mean = torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1)
     std = torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1)
@@ -81,6 +85,9 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.time()
     with ThreadPoolExecutor(4) as pool, torch.inference_mode():
         for i in range(0, len(recs), args.batch):
+            if (i // args.batch) % 16 == 0 and not ram_ok():
+                print(ram_message() + " (embedded so far are kept)")
+                break
             chunk = recs[i:i + args.batch]
             imgs = list(pool.map(read_small, chunk))
             ok = [(r, im) for r, im in zip(chunk, imgs) if im is not None]

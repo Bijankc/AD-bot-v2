@@ -19,6 +19,7 @@ from datetime import datetime
 import numpy as np
 
 from adbot2 import paths
+from adbot2.resources import ram_message, ram_ok
 from adbot2.capture import lower_priority
 from adbot2.crops import HEADS, CropCache, cut
 from adbot2.dataset import load_game_area, load_manifest
@@ -53,9 +54,18 @@ def main(argv: list[str] | None = None) -> int:
     if not recs:
         print("nothing new")
         return 0
+    if not ram_ok():
+        print(ram_message())
+        return 2
     t0 = time.time()
+    results = []
     with ThreadPoolExecutor(6) as ex:
-        results = list(ex.map(cut_all, recs))
+        for k in range(0, len(recs), 256):
+            if not ram_ok():
+                print(ram_message() + " (cut so far are kept)")
+                recs = recs[:k]
+                break
+            results += ex.map(cut_all, recs[k:k + 256])
     ids = [r.id for r, c in zip(recs, results) if c is not None]
     skipped = [r.id for r, c in zip(recs, results) if c is None]
     names = list(HEADS) + list(FIELDS)
