@@ -41,6 +41,7 @@ SPEED_EVERY = 30 * 60
 SPEED_LAST_MIN = 52         # with the raid on, no Speed Raid starts after this minute of the raid hour
 SPEED_MAX = 12 * 60         # a Speed Raid fight longer than this is left (Roblox restart)
 SPEED_WAIT_MAX = 12 * 60    # a due Speed Raid is put off at most this long
+SPEED_RETRY = 120           # entering a Speed Raid failed (window did not open, Start did not work): try again then
 INF_LONG = 30 * 60          # an Infinity run this old ends soon by itself
 RAID_MAX = 15 * 60          # a raid still a fight after this long restarts Roblox (10 Nov: 5 h behind a dialog)
 SPEED_RAID_DUE_MAX = 180    # a Speed Raid fight this long is left when the raid is due (the raid is worth more)
@@ -313,6 +314,12 @@ class Policy:
             elif a.name == "restart_roblox":
                 m.mode, m.fight_since, m.roblox_started = None, None, now
         return a
+
+    def speed_later(self, now: float, seconds: float, why: str = "") -> None:
+        """Put the next Speed Raid off (old bot's SpeedLater): the card says "Ready in H:MM:SS" (that + 10 s), no free
+        character this week (until the weekly reset + 3 min), or entering failed (SPEED_RETRY). Called by whoever
+        reads the card or sees the failure."""
+        self.m.speed_due = now + seconds
 
     def _raid_retry(self, now: float, f: Facts) -> None:
         """A raid fight cut off in its first 10 min gave no rewards: allow one more try this raid hour (never after

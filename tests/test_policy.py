@@ -248,3 +248,14 @@ def test_no_retry_after_the_raid_results():
     p.m.fight_since = at(3600 + 40)                           # as if the results were a flash inside the fight
     p.step(at(3600 + 310), facts("disconnected"))
     assert p.m.raid_done == raid_hour(at(3600 + 40), OPENS)
+
+
+def test_speed_later_moves_the_schedule():
+    from adbot2.policy import SPEED_RETRY
+    p = Policy(Settings(loadouts=False))
+    p.m.raid_done = raid_hour(at(0), OPENS)
+    t = at(20 * 60)
+    assert goal(t, facts("lobby"), p.s, p.m) == "speed"
+    p.speed_later(t, SPEED_RETRY, "window did not open")
+    assert goal(t + 60, facts("lobby"), p.s, p.m) == "infinity"
+    assert goal(t + SPEED_RETRY, facts("lobby"), p.s, p.m) == "speed"
