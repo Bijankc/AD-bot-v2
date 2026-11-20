@@ -11,8 +11,10 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import cv2
 import numpy as np
 
+from adbot2.buttons import read_start
 from adbot2.crops import HEADS, OnnxCropModel, cut
 from adbot2.digits import DigitReader
 from adbot2.geometry import GameArea
@@ -33,6 +35,8 @@ class Observation:
     enemies: bool | None = None      # ENEMIES LEFT diamond shown
     enemy_count: int | None = None
     gf_banner: bool | None = None
+    start_button: bool | None = None   # PARTY's orange Start (adbot2.buttons)
+    thumb: np.ndarray | None = None    # 32x18 grey game band, for 'the picture has not changed'
     menu_clock: tuple[int, int] | None = None   # (minutes, seconds) on the RAID card
     ms: dict[str, float] = field(default_factory=dict)
 
@@ -88,6 +92,8 @@ class Perception:
         if "gf_banner" in self.heads:
             m = self.heads["gf_banner"]
             o.gf_banner = m.classes[int(m.probs(cut(img, m.head))[0].argmax())] == "shown"
+        o.start_button = read_start(img).shown
+        o.thumb = cv2.resize(cv2.cvtColor(img[23:1040], cv2.COLOR_BGR2GRAY), (32, 18), interpolation=cv2.INTER_AREA)
         t2 = time.perf_counter()
         if self.menu_clock is not None and o.screen in (None, "modes_menu"):
             band = cut_field(img, FIELDS["menu_clock"])

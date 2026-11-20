@@ -29,6 +29,9 @@ from adbot2.perception import Perception, newest
 from adbot2.resources import ram_message, ram_ok
 
 
+RULE_READERS = "b1"   # version of the readers without a model file (adbot2.buttons); bump to replay again
+
+
 def models_key(models: Path) -> str:
     """Names of the model runs in use, so a replay is redone when any model changes."""
     parts = []
@@ -37,7 +40,7 @@ def models_key(models: Path) -> str:
                         ("text/menu_clock", "reader.npz")):
         run = newest(models / sub, marker)
         parts.append(run.name if run else "-")
-    return "_".join(parts)
+    return "_".join(parts + [RULE_READERS])
 
 
 def load_replay(path: Path) -> dict[str, np.ndarray]:
@@ -79,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             return None
 
     rows: dict[str, list] = {k: [] for k in ("ids", "time", "screen_probs", "auto_probs", "enemies", "count",
-                                              "gf", "clock")}
+                                              "gf", "start", "clock")}
     t0 = time.time()
 
     def batches():
@@ -104,12 +107,13 @@ def main(argv: list[str] | None = None) -> int:
         rows["enemies"].append(bool(o.enemies))
         rows["count"].append(-1 if o.enemy_count is None else o.enemy_count)
         rows["gf"].append(bool(o.gf_banner))
+        rows["start"].append(bool(o.start_button))
         rows["clock"].append(-1 if o.menu_clock is None else o.menu_clock[0] * 60 + o.menu_clock[1])
     new = {"ids": np.array(rows["ids"]), "time": np.array(rows["time"]),
            "screen_probs": np.array(rows["screen_probs"], np.float16), "auto_probs": np.array(rows["auto_probs"],
                                                                                               np.float16),
            "enemies": np.array(rows["enemies"]), "count": np.array(rows["count"], np.int16),
-           "gf": np.array(rows["gf"]), "clock": np.array(rows["clock"], np.int16)}
+           "gf": np.array(rows["gf"]), "start": np.array(rows["start"]), "clock": np.array(rows["clock"], np.int16)}
     if old:
         new = {k: np.concatenate([old[k], new[k]]) for k in new}
         order = np.argsort(new["time"], kind="stable")

@@ -10,12 +10,15 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
+import numpy as np
+
 from adbot2.perception import Observation
 from adbot2.smoothing import Agree, ScreenFilter
 
 AUTO_OFF_FRAMES = 3       # confident OFF readings in a row before "Auto is off"
 COUNT_AGREE = 2           # enemy count readings that must agree
 CLEARED_HOLD_S = 4.0      # 0 enemies must hold this long ("the next wave came ~4 s after a 0 once")
+STILL_DIFF = 2.0          # mean absolute change of the 32x18 grey thumbnail that counts as a change
 CLOCK_TOLERANCE_S = 2     # two raid-clock readings must imply the same opening second within this
 GF_AGREE = 2              # Group Finder banner readings in a row before "queued"
 GF_CLEAR_S = 10.0         # banner gone this long before "not queued" (an open window dims it)
@@ -29,6 +32,8 @@ class Facts:
     cleared: bool = False              # 0 enemies held for CLEARED_HOLD_S
     raid_opens_at: int | None = None   # second of the local hour this server's raid opens, once confirmed
     gf_queued: bool = False            # the Group Finder queue banner is on screen (debounced)
+    start_shown: bool = False          # PARTY's Start button in 2 frames in a row
+    still_since: float | None = None   # the picture has not changed since then (None = no thumbnails)
 
 
 def local_time(t: float) -> float:
@@ -47,6 +52,8 @@ class Tracker:
         self._clock_candidate: int | None = None
         self._gf_run = 0
         self._gf_last: float | None = None
+        self._start_run = 0
+        self._thumb: np.ndarray | None = None
 
     def update(self, o: Observation, t: float) -> Facts:
         """Feed one observation taken at time t (seconds since the epoch; the wall clock matters for the raid)."""
@@ -77,6 +84,14 @@ class Tracker:
             self._gf_run = 0
             if f.gf_queued and (self._gf_last is None or t - self._gf_last >= GF_CLEAR_S):
                 f.gf_queued = False
+        # frozen picture: the thumbnail has not changed since still_since
+        if o.thumb is not None:
+            th = o.thumb.astype(np.float32)
+            if self._thumb is None or float(np.abs(th - self._thumb).mean()) > STILL_DIFF:
+                self._thumb, f.still_since = th, t
+        # PARTY Start button: two frames in a row
+        self._start_run = self._start_run + 1 if o.start_button else 0
+        f.start_shown = self._start_run >= 2
         # raid clock: a reading implies an opening second; two that agree confirm it
         if o.menu_clock is not None:
             m, s = o.menu_clock

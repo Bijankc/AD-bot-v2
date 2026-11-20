@@ -75,3 +75,18 @@ def test_raid_clock_is_in_local_time(monkeypatch):
     utc_whole_hour = 1_800_000_000
     tr.update(obs(menu_clock=(2, 0)), utc_whole_hour - 120)     # 2:00 left at UTC :58 = local :43
     assert tr.update(obs(menu_clock=(1, 58)), utc_whole_hour - 118).raid_opens_at == 2700
+
+
+def test_start_button_needs_two_frames():
+    tr = Tracker(C)
+    assert not tr.update(obs(start_button=True), T0).start_shown
+    assert tr.update(obs(start_button=True), T0 + 0.3).start_shown
+    assert not tr.update(obs(start_button=False), T0 + 0.6).start_shown
+
+
+def test_still_since_follows_picture_changes():
+    tr = Tracker(C)
+    a, b = np.zeros((18, 32), np.uint8), np.full((18, 32), 40, np.uint8)
+    assert tr.update(obs(thumb=a), T0).still_since == T0
+    assert tr.update(obs(thumb=a + 1), T0 + 60).still_since == T0          # tiny change: still
+    assert tr.update(obs(thumb=b), T0 + 120).still_since == T0 + 120

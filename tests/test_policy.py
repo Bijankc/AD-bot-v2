@@ -1,6 +1,6 @@
 import time
 
-from adbot2.policy import (GF_FALLBACK, INF_STOP, SPEED_EVERY, SPEED_MAX, Memory, Policy, Settings, decide, goal,
+from adbot2.policy import (GF_FALLBACK, RAID_MAX, ROBLOX_MAX_AGE, INF_STOP, SPEED_EVERY, SPEED_MAX, Memory, Policy, Settings, decide, goal,
                            raid_hour, raid_time)
 from adbot2.tracker import Facts
 
@@ -109,9 +109,10 @@ def test_group_finder_raid():
     assert decide(t, facts("raid_window"), Settings(raid_entry="create"), m).name == "wait"   # not open yet
 
 
-def test_raid_world_with_another_goal_restarts():
-    a = decide(at(20 * 60), facts("raid_world"), m=mem())
-    assert a.name == "restart_roblox"
+def test_raid_world_with_another_goal_restarts_after_a_grace():
+    t = at(20 * 60)
+    assert decide(t, facts("raid_world"), m=mem(screen="raid_world", screen_since=t - 30)).name == "wait"
+    assert decide(t, facts("raid_world"), m=mem(screen="raid_world", screen_since=t - 91)).name == "restart_roblox"
     assert decide(at(20 * 60), facts("raid_window"), m=mem()).name == "close_window"
 
 
@@ -173,4 +174,77 @@ def test_raid_time_uses_the_local_hour(monkeypatch):
 
 def test_results_leave_only_for_speed_raid():
     assert decide(at(20 * 60), facts("results_raid"), m=mem(mode="speed")).name == "leave"
+    assert decide(at(20 * 60), facts("results_dimension"), m=mem(mode="speed")).name == "leave"
+    assert decide(at(20 * 60), facts("results_dimension"), m=mem(mode="titan")).name == "unhandled"
     assert decide(at(5 * 60), facts("results_raid"), m=mem(mode="raid")).name == "wait"
+
+
+def test_start_in_the_party_view_of_a_window():
+    t, m = at(20 * 60), mem()
+    assert decide(t, facts("dimension_window", start_shown=True), m=m).name == "start"
+    assert decide(t, facts("raid_window", start_shown=True), m=m).name == "close_window"   # not the goal
+    assert decide(at(30), facts("raid_window", start_shown=True), m=Memory()).name == "start"
+    assert decide(t, facts("dimension_window"), m=m).name == "pick_infinite"
+
+
+def test_watchdog_unknown_screen_esc_then_restart():
+    t = at(20 * 60)
+    assert decide(t, facts(None), m=mem(screen_since=t - 60)).name == "wait"
+    assert decide(t, facts(None), m=mem(screen_since=t - 91)).name == "press_esc"
+    assert decide(t, facts(None), m=mem(screen_since=t - 120, esc_done=True)).name == "wait"
+    assert decide(t, facts(None), m=mem(screen_since=t - 181, esc_done=True)).name == "restart_roblox"
+
+
+def test_watchdog_frozen_picture_but_not_while_queued():
+    t = at(20 * 60)
+    assert decide(t, facts("lobby", still_since=t - 181), m=mem()).name == "restart_roblox"
+    assert decide(t, facts("lobby", still_since=t - 100), m=mem()).name != "restart_roblox"
+    q = facts("raid_world", still_since=t - 181, gf_queued=True)
+    assert decide(at(INF_STOP + 60), q, m=Memory()).name == "wait"
+
+
+def test_watchdog_long_runs_and_the_gap():
+    t = at(20 * 60)
+    assert decide(t, facts("fight"), m=mem(mode="raid", fight_since=t - RAID_MAX - 1)).name == "restart_roblox"
+    assert decide(t, facts("respawn"), m=mem(mode="speed", fight_since=t - 13 * 60)).name == "restart_roblox"
+    # the raid is due: a Speed Raid is left after 3 min
+    t = at(INF_STOP + 10)
+    assert decide(t, facts("fight"), m=mem(mode="speed", fight_since=t - 200)).name == "restart_roblox"
+    # within the gap: no second restart, the normal decision instead
+    m = mem(mode="raid", fight_since=t - RAID_MAX - 1, last_restart=t - 30)
+    assert decide(t, facts("fight"), m=m).name == "wait"
+
+
+def test_watchdog_preventive_restart_in_the_lobby_only():
+    t = at(20 * 60)
+    old = t - ROBLOX_MAX_AGE - 1
+    assert decide(t, facts("lobby"), m=mem(roblox_started=old)).name == "restart_roblox"
+    assert decide(t, facts("lobby"), m=mem(roblox_started=t - 600)).name == "set_loadout"
+    assert decide(at(3 * 60), facts("lobby"), m=mem(roblox_started=at(3 * 60) - ROBLOX_MAX_AGE - 1)).name != "restart_roblox"
+    assert decide(t, facts("fight"), m=mem(roblox_started=old)).name == "wait"
+
+
+def test_cut_off_raid_gets_one_retry():
+    p = Policy(Settings(loadouts=False))
+    p.step(at(INF_STOP + 30), facts("raid_window"))           # queue_gf: mode raid
+    p.step(at(3600 + 40), facts("fight"))
+    key = raid_hour(at(3600 + 40), OPENS)
+    assert p.m.raid_done == key
+    p.m.last_restart = None
+    p.step(at(3600 + 60), facts("disconnected"))              # restart: cut off at minute 1
+    assert p.m.raid_done is None and p.m.raid_retry == key
+    assert goal(at(3600 + 120), facts("lobby"), p.s, p.m) == "raid"
+    # a second cut-off in the same hour: no more tries
+    p.m.mode, p.m.fight_since, p.m.raid_done, p.m.last_restart = "raid", at(3600 + 200), key, None
+    p.step(at(3600 + 230), facts("disconnected"))
+    assert p.m.raid_done == key
+
+
+def test_no_retry_after_the_raid_results():
+    p = Policy(Settings(loadouts=False))
+    p.step(at(INF_STOP + 30), facts("raid_window"))
+    p.step(at(3600 + 40), facts("fight"))
+    p.step(at(3600 + 300), facts("results_raid"))
+    p.m.fight_since = at(3600 + 40)                           # as if the results were a flash inside the fight
+    p.step(at(3600 + 310), facts("disconnected"))
+    assert p.m.raid_done == raid_hour(at(3600 + 40), OPENS)

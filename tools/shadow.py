@@ -143,6 +143,7 @@ def main(argv: list[str] | None = None) -> int:
                         enemies=bool(data["enemies"][k]),
                         enemy_count=None if data["count"][k] < 0 else int(data["count"][k]),
                         gf_banner=bool(data["gf"][k]),
+                        start_button=bool(data["start"][k]) if "start" in data else None,
                         menu_clock=None if data["clock"][k] < 0 else divmod(int(data["clock"][k]), 60))
         f = tr.update(o, t)
         j = bisect.bisect_right(entered_t, t)
