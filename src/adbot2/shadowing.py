@@ -20,7 +20,7 @@ ENTERED = [
     (re.compile(r"^pressing Create \(infinity\)"), "infinity"),
     (re.compile(r"^Titan: pressing Create"), "titan"),
     (re.compile(r"^Speed Raid: start \(character"), "speed"),
-    (re.compile(r"^(pressing Create \(raid\)|Group Finder: raid open)"), "raid"),
+    (re.compile(r"^(pressing Create \(raid\)|Group Finder: (raid open|queued for )|raid: Auto)"), "raid"),
     (re.compile(r"^(pressing PLAY|lobby \(PLAY visible\)|restarting Roblox)"), None),
 ]
 LOADOUT_LINE = re.compile(r"^loadout (\d): opening Bag")   # the intent: "loadout N ✓" comes with PLAY

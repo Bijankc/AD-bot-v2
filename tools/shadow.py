@@ -28,7 +28,7 @@ import numpy as np
 from adbot2 import paths
 from adbot2.oldlog import read_all_lines
 from adbot2.perception import Observation
-from adbot2.policy import Policy, goal
+from adbot2.policy import IN_RUN, Policy, goal
 from adbot2.shadowing import OldBotState
 from adbot2.tracker import Tracker
 
@@ -50,6 +50,7 @@ OLD_ACTIONS = [
     (re.compile(r"^restarting Roblox: (?!preventive)"), "restart_roblox", 3.0),
 ]
 GOAL_LINE = re.compile(r"^goal: (.*)")
+OLD_GOAL = {"titan": "dimension"}
 
 
 def at_time(tl, times, t, default=None):
@@ -61,7 +62,7 @@ GAP_S = 30.0
 LIVE_HOLD_S = 30.0   # live rows are written on a change (and every 30 s): a row holds until the next one
 
 
-def replay_decisions(opens: int, lines) -> tuple[list[tuple[float, str]], list[str]]:
+def replay_decisions(opens: int, lines) -> tuple[list[tuple[float, str]], list[str], list[str]]:
     """v2's decision on every frame of the newest replay, with the policy's memory following the old bot's log."""
     rdir = paths.home() / "reports" / "replay"
     latest = json.loads((rdir / "latest.json").read_text(encoding="utf-8"))
@@ -72,6 +73,7 @@ def replay_decisions(opens: int, lines) -> tuple[list[tuple[float, str]], list[s
     old_bot, li = OldBotState(), 0
     decisions: list[tuple[float, str]] = []
     views: list[str] = []
+    goals: list[str] = []
     tr, prev = None, None
     for k in np.argsort(times):
         t = float(times[k])
@@ -93,22 +95,25 @@ def replay_decisions(opens: int, lines) -> tuple[list[tuple[float, str]], list[s
             li += 1
         old_bot.apply(pol)
         a = pol.step(t, f)
+        g = goal(t, f, pol.s, pol.m)
         decisions.append((t, a.name))
+        goals.append(g)
         views.append(f"{f.screen} opens={f.raid_opens_at} clock={o.menu_clock} mode={pol.mode} "
-                     f"goal={goal(t, f, pol.s, pol.m)} -> {a.name}: {a.why}")
-    return decisions, views
+                     f"goal={g} -> {a.name}: {a.why}")
+    return decisions, views, goals
 
 
-def live_decisions(day: str) -> tuple[list[tuple[float, str]], list[str]]:
+def live_decisions(day: str) -> tuple[list[tuple[float, str]], list[str], list[str]]:
     """Rows written by tools/shadow_live.py on one day (yyyymmdd)."""
-    decisions, views = [], []
+    decisions, views, goals = [], [], []
     with open(paths.home() / "reports" / "shadow_live" / f"{day}.jsonl", encoding="utf-8") as fh:
         for raw in fh:
             r = json.loads(raw)
             decisions.append((datetime.fromisoformat(r["time"]).timestamp(), r["action"]))
+            goals.append(r["goal"])
             views.append(f"{r['screen']} opens={r['opens']} mode={r['mode']} goal={r['goal']} -> {r['action']}: "
                          f"{r['why']}")
-    return decisions, views
+    return decisions, views, goals
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -121,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
     lines = read_all_lines(args.bot_dir)
     goals = [(ln.time.timestamp(), m.group(1)) for ln in lines if (m := GOAL_LINE.search(ln.text))]
     goal_t = [t for t, _ in goals]
-    decisions, views = live_decisions(args.live) if args.live else replay_decisions(args.opens, lines)
+    decisions, views, v2_goals = live_decisions(args.live) if args.live else replay_decisions(args.opens, lines)
     dt = [t for t, _ in decisions]
 
     old = []
@@ -168,6 +173,17 @@ def main(argv: list[str] | None = None) -> int:
         if covered[name]:
             print(f"{name:16} {covered[name]:11} {matched[name]:8}   {seen_instead[name].most_common(3)}")
     print("extra v2 actions (no such old-bot action within 10 s):", dict(extra))
+    # goals: the old bot logs its goal when it changes; compare with v2's on every frame (no labels needed)
+    # (in a run the old bot logs no new goal, and its "raid" before a run means "after this run": out of runs only)
+    pairs = Counter()
+    for (t, _), g, v in zip(decisions, v2_goals, views):
+        old_goal = at_time(goals, goal_t, t)
+        if old_goal and v.split()[0] not in IN_RUN:
+            pairs[(OLD_GOAL.get(old_goal.split()[0], old_goal.split()[0]), g)] += 1
+    total = sum(pairs.values())
+    same = sum(n for (o, g), n in pairs.items() if o == g)
+    print(f"goal agreement out of runs: {same} / {total} ({100 * same / max(1, total):.1f}%); disagreements "
+          f"(old, v2): {dict(Counter({k: n for k, n in pairs.items() if k[0] != k[1]}).most_common(6))}")
     return 0
 
 
