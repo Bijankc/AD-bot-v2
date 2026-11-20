@@ -1,10 +1,12 @@
+import time
+
 import numpy as np
 
 from adbot2.perception import Observation
 from adbot2.tracker import Tracker
 
 C = ["fight", "lobby"]
-T0 = 1_800_000_000.0  # a whole hour in epoch seconds: second-of-hour = offset from T0
+T0 = 1_800_000_000.0 - time.localtime(1_800_000_000).tm_gmtoff  # a whole local hour: second-of-hour = offset from T0
 
 
 def obs(**kw) -> Observation:
@@ -55,3 +57,21 @@ def test_screen_unknown_until_convincing():
     tr = Tracker(C)
     assert tr.update(obs(screen_probs=np.array([0.55, 0.45])), T0).screen is None
     assert tr.update(obs(), T0 + 0.3).screen == "fight"
+
+
+def test_group_finder_queue_is_debounced():
+    tr = Tracker(C)
+    assert not tr.update(obs(gf_banner=True), T0).gf_queued          # one banner frame: not yet
+    assert tr.update(obs(gf_banner=True), T0 + 2).gf_queued
+    assert tr.update(obs(gf_banner=False), T0 + 4).gf_queued         # dimmed by a window for a moment
+    assert tr.update(obs(gf_banner=None), T0 + 8).gf_queued         # not read: no change
+    assert not tr.update(obs(gf_banner=False), T0 + 13).gf_queued    # gone for 10 s
+
+
+def test_raid_clock_is_in_local_time(monkeypatch):
+    import adbot2.tracker as tracker
+    monkeypatch.setattr(tracker, "local_time", lambda t: t + 5 * 3600 + 45 * 60)
+    tr = Tracker(C)
+    utc_whole_hour = 1_800_000_000
+    tr.update(obs(menu_clock=(2, 0)), utc_whole_hour - 120)     # 2:00 left at UTC :58 = local :43
+    assert tr.update(obs(menu_clock=(1, 58)), utc_whole_hour - 118).raid_opens_at == 2700
