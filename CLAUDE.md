@@ -94,3 +94,15 @@ no user names, no server links, no paths under the user profile.
 - AUTO acts only on P(off) >= 0.98; the trainer reports ON read as OFF, which must stay 0.
 - Enemy count: `adbot2/digits.py` + `tools/digit_templates.py cluster | name RUN MAP | check`; templates live in
   `models\digits\` (never committed). The count flickers (0 between waves): debounce it, never act on one 0.
+
+## Decisions (M2: `tracker.py`, `policy.py`, `shadowing.py`)
+
+- Raid time = second of the *local* hour (`tracker.local_time`); zones are not all whole hours, so never take it
+  from epoch seconds (20 Nov: v2's raid hour was 45 min off until the clock was read twice).
+- The PARTY window (Start / Leave) is labelled as the window it opens from, so Start is read by colour at a fixed box
+  (`buttons.py`, check with `tools/button_check.py`). Speed Raid results look like Dimension results (only LEAVE).
+- Shadow on stored frames: `tools/shadow.py` (`--why ACTION` prints each miss with v2's view). Mode, loadout,
+  Speed Raid schedule and settings come from the old bot's log (`OldBotState`). Live: `tools/shadow_live.py`
+  (read-only, like the logger; rows in `reports\shadow_live\`; stop with its STOP file).
+- Restarts the screen cannot see (not responding, no window, Titan rules) belong to the input layer, not the policy.
+- Every tool that decodes frames checks `adbot2.resources.ram_ok()` (4 GB floor) before and between batches.

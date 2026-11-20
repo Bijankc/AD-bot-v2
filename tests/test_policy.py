@@ -164,7 +164,7 @@ def test_dimension_goal_comes_before_infinity():
 
 
 def test_raid_time_uses_the_local_hour(monkeypatch):
-    """UTC+5:45 (this PC): the raid at local :45:00 opens at UTC :00:00."""
+    """A zone that is not a whole hour (UTC+5:45): the raid at local :45:00 opens at UTC :00:00."""
     import adbot2.policy as policy
     monkeypatch.setattr(policy, "local_time", lambda t: t + 5 * 3600 + 45 * 60)
     utc_whole_hour = 1_800_000_000

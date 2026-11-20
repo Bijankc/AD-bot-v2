@@ -184,3 +184,11 @@ and anything with your username never go into the repo; small commits; ask befor
   compares with the old bot's own actions: Infinity LEAVE 20 / 24 the same; PLAY for the raid / Speed Raid, Start (it
   is inside the Dimension window: needs a Start-button reader) and "entering Dimension" (logged after the click) not
   yet; reset must only apply to an Infinity fight, so the policy needs to remember which mode it entered.
+- **20 Nov, M2 policy slices (no labels needed):** raid hour, Group Finder queue with the Create fallback, Speed Raid
+  schedule, loadouts, Dimension goal, and the old bot's restart rules (watchdog, restart gaps, one retry for a raid
+  cut off before its results). Bug found: raid time used the UTC second of the hour, wrong in zones that are not whole
+  hours. The PARTY window carries the window's label, so its Start button is read by colour (`buttons.py`). Shadow
+  mode (109 h of frames, mode/loadout/schedule from the old bot's log): open_raid 37 / 37, PLAY 55 / 86, Group
+  Finder 9 / 11, LEAVE 34 / 46; extra resets 4,227 -> 0; v2 restarted once in 109 h. Gaps are perception: the Speed
+  Raid window is not recognised (no labels), Auto OFF needs 3 frames (stored frames are ~2 s apart). Live shadow
+  mode (`tools/shadow_live.py`) is written and tested offline, not started yet.
