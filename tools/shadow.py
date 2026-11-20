@@ -1,6 +1,7 @@
 """Shadow mode on recorded frames: run tracker + policy over the replay timeline and compare with the old bot.
 
-    python tools/shadow.py [--bot-dir ..\\AD-bot] [--opens 2700]
+    python tools/shadow.py [--bot-dir ..\\AD-bot] [--opens 2700] [--why ACTION]
+    python tools/shadow.py --live YYYYMMDD      (rows written by tools/shadow_live.py that day)
 
 For every action the old bot logged (OLD_ACTIONS: PLAY, loadouts, Dimension, Infinity, Start, Auto, the raid world,
 Group Finder, Speed Raid, Roblox restarts other than preventive ones), was v2's decision the same on a frame from a few
@@ -57,32 +58,26 @@ def at_time(tl, times, t, default=None):
 
 
 GAP_S = 30.0
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--bot-dir", type=Path, default=Path("..") / "AD-bot")
-    ap.add_argument("--opens", type=int, default=2700, help="second of the hour the raid opens, until read")
-    ap.add_argument("--why", metavar="ACTION", help="print every miss of this old-bot action with v2's view")
-    args = ap.parse_args(argv)
+LIVE_HOLD_S = 30.0   # live rows are written on a change (and every 30 s): a row holds until the next one
+
+
+def replay_decisions(opens: int, lines) -> tuple[list[tuple[float, str]], list[str]]:
+    """v2's decision on every frame of the newest replay, with the policy's memory following the old bot's log."""
     rdir = paths.home() / "reports" / "replay"
     latest = json.loads((rdir / "latest.json").read_text(encoding="utf-8"))
     with np.load(rdir / latest["file"]) as z:
         data = {k: z[k] for k in z.files}
     classes = latest["classes"]
     times = np.array([datetime.fromisoformat(t).timestamp() for t in data["time"].tolist()])
-    order = np.argsort(times)
-
-    lines = read_all_lines(args.bot_dir)
-    goals = [(ln.time.timestamp(), m.group(1)) for ln in lines if (m := GOAL_LINE.search(ln.text))]
-    goal_t = [t for t, _ in goals]
     old_bot, li = OldBotState(), 0
     decisions: list[tuple[float, str]] = []
     views: list[str] = []
     tr, prev = None, None
-    for k in order:
+    for k in np.argsort(times):
         t = float(times[k])
         if tr is None or t - prev > GAP_S:
             tr = Tracker(classes)
-            tr.facts.raid_opens_at = args.opens
+            tr.facts.raid_opens_at = opens
             pol = Policy(own_mode=False)
         prev = t
         auto = data["auto_probs"][k].astype(np.float32)
@@ -99,8 +94,34 @@ def main(argv: list[str] | None = None) -> int:
         old_bot.apply(pol)
         a = pol.step(t, f)
         decisions.append((t, a.name))
-        if args.why:
-            views.append(f"{f.screen} opens={f.raid_opens_at} clock={o.menu_clock} mode={pol.mode} goal={goal(t, f, pol.s, pol.m)} -> {a.name}: {a.why}")
+        views.append(f"{f.screen} opens={f.raid_opens_at} clock={o.menu_clock} mode={pol.mode} "
+                     f"goal={goal(t, f, pol.s, pol.m)} -> {a.name}: {a.why}")
+    return decisions, views
+
+
+def live_decisions(day: str) -> tuple[list[tuple[float, str]], list[str]]:
+    """Rows written by tools/shadow_live.py on one day (yyyymmdd)."""
+    decisions, views = [], []
+    with open(paths.home() / "reports" / "shadow_live" / f"{day}.jsonl", encoding="utf-8") as fh:
+        for raw in fh:
+            r = json.loads(raw)
+            decisions.append((datetime.fromisoformat(r["time"]).timestamp(), r["action"]))
+            views.append(f"{r['screen']} opens={r['opens']} mode={r['mode']} goal={r['goal']} -> {r['action']}: "
+                         f"{r['why']}")
+    return decisions, views
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--bot-dir", type=Path, default=Path("..") / "AD-bot")
+    ap.add_argument("--opens", type=int, default=2700, help="second of the local hour the raid opens, until read")
+    ap.add_argument("--why", metavar="ACTION", help="print every miss of this old-bot action with v2's view")
+    ap.add_argument("--live", metavar="YYYYMMDD", help="score tools/shadow_live.py rows of that day instead")
+    args = ap.parse_args(argv)
+    lines = read_all_lines(args.bot_dir)
+    goals = [(ln.time.timestamp(), m.group(1)) for ln in lines if (m := GOAL_LINE.search(ln.text))]
+    goal_t = [t for t, _ in goals]
+    decisions, views = live_decisions(args.live) if args.live else replay_decisions(args.opens, lines)
     dt = [t for t, _ in decisions]
 
     old = []
@@ -114,6 +135,8 @@ def main(argv: list[str] | None = None) -> int:
     seen_instead: dict[str, Counter] = defaultdict(Counter)
     for t, name, before in old:
         lo, hi = bisect.bisect_left(dt, t - before), bisect.bisect_right(dt, t + 0.5)
+        if args.live and lo > 0 and dt[lo - 1] >= t - before - LIVE_HOLD_S:
+            lo -= 1   # the row in force when the window began
         if lo == hi:
             continue  # no frame near this action (Roblox not in front, or before the logger ran)
         covered[name] += 1
@@ -138,7 +161,8 @@ def main(argv: list[str] | None = None) -> int:
         if not (j < len(ts) and ts[j] <= t + 50):
             extra[name] += 1
     hours = (dt[-1] - dt[0]) / 3600 if dt else 0
-    print(f"{len(decisions)} frames over {hours:.0f} h; v2 decisions: {dict(Counter(n for _, n in decisions))}")
+    what = "live rows" if args.live else "frames"
+    print(f"{len(decisions)} {what} over {hours:.0f} h; v2 decisions: {dict(Counter(n for _, n in decisions))}")
     print(f"{'old bot action':16} {'with frames':>11} {'v2 same':>8}   v2 decided instead (top)")
     for _, name, _ in OLD_ACTIONS:
         if covered[name]:
