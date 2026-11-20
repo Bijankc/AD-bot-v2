@@ -62,8 +62,10 @@ GAP_S = 30.0
 LIVE_HOLD_S = 30.0   # live rows are written on a change (and every 30 s): a row holds until the next one
 
 
-def replay_decisions(opens: int, lines) -> tuple[list[tuple[float, str]], list[str], list[str]]:
-    """v2's decision on every frame of the newest replay, with the policy's memory following the old bot's log."""
+def replay_decisions(opens: int, lines, window: tuple[float, float] | None = None
+                     ) -> tuple[list[tuple[float, str]], list[str], list[str]]:
+    """v2's decision on every frame of the newest replay (or those in `window`, epoch seconds), with the policy's
+    memory following the old bot's log."""
     rdir = paths.home() / "reports" / "replay"
     latest = json.loads((rdir / "latest.json").read_text(encoding="utf-8"))
     with np.load(rdir / latest["file"]) as z:
@@ -77,6 +79,8 @@ def replay_decisions(opens: int, lines) -> tuple[list[tuple[float, str]], list[s
     tr, prev = None, None
     for k in np.argsort(times):
         t = float(times[k])
+        if window and not window[0] <= t < window[1]:
+            continue
         if tr is None or t - prev > GAP_S:
             tr = Tracker(classes)
             tr.facts.raid_opens_at = opens
