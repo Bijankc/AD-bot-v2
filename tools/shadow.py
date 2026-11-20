@@ -19,7 +19,7 @@ import bisect
 import json
 import re
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -27,7 +27,8 @@ import numpy as np
 from adbot2 import paths
 from adbot2.oldlog import read_all_lines
 from adbot2.perception import Observation
-from adbot2.policy import Policy, Settings, goal
+from adbot2.policy import Policy, goal
+from adbot2.shadowing import OldBotState
 from adbot2.tracker import Tracker
 
 # old-bot log line -> v2 action, and how long before the line v2's decision may come (lines logged after the
@@ -47,58 +48,15 @@ OLD_ACTIONS = [
     (re.compile(r"^Speed Raid: start \(character"), "speed_start", 15.0),
     (re.compile(r"^restarting Roblox: (?!preventive)"), "restart_roblox", 3.0),
 ]
-LOADOUT_LINE = re.compile(r"^loadout (\d): opening Bag")   # the intent: "loadout N ✓" comes with PLAY
-SPEED_AT = re.compile(r"next Speed Raid at (\d\d):(\d\d)")
-SPEED_NOW = re.compile(r"\(Speed Raid is available\)")
 GOAL_LINE = re.compile(r"^goal: (.*)")
-START_LINE = re.compile(r"^start v.*loadouts=(\d), raid=(\d), infinity=(\d), speed=(\d), raidEntry=(\w+)")
-
-
-def timeline(lines, parse):
-    """[(t, value)] for every line where parse(line) is not None, in time order."""
-    out = []
-    for ln in lines:
-        v = parse(ln)
-        if v is not None:
-            out.append((ln.time.timestamp(), v))
-    return out
-
-
-def speed_due(ln):
-    """When the old bot planned its next Speed Raid, from its goal lines."""
-    if SPEED_NOW.search(ln.text):
-        return ln.time.timestamp()
-    if m := SPEED_AT.search(ln.text):
-        due = ln.time.replace(hour=int(m.group(1)), minute=int(m.group(2)), second=0, microsecond=0)
-        if due < ln.time - timedelta(hours=12):
-            due += timedelta(days=1)
-        return due.timestamp()
-    return None
-
-
-def settings(ln):
-    if m := START_LINE.search(ln.text):
-        lo, raid, inf, speed, entry = m.groups()
-        # infinity=0 was the Titan farming days (titan is not in the start line)
-        return Settings(raid=raid == "1", speed=speed == "1", infinity=inf == "1", dimension=inf == "0",
-                        raid_entry=entry, loadouts=lo == "1")
-    return None
 
 
 def at_time(tl, times, t, default=None):
     j = bisect.bisect_right(times, t)
     return tl[j - 1][1] if j else default
+
+
 GAP_S = 30.0
-# what the old bot entered, for the policy's mode memory (v2 does not choose the run in shadow mode)
-ENTERED = [
-    (re.compile(r"^pressing Create \(infinity\)"), "infinity"),
-    (re.compile(r"^Titan: pressing Create"), "titan"),
-    (re.compile(r"^Speed Raid: start \(character"), "speed"),
-    (re.compile(r"^(pressing Create \(raid\)|Group Finder: raid open)"), "raid"),
-    (re.compile(r"^(pressing PLAY|lobby \(PLAY visible\)|restarting Roblox)"), None),
-]
-
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--bot-dir", type=Path, default=Path("..") / "AD-bot")
@@ -114,20 +72,9 @@ def main(argv: list[str] | None = None) -> int:
     order = np.argsort(times)
 
     lines = read_all_lines(args.bot_dir)
-    entered = []
-    for ln in lines:
-        for rx, mode in ENTERED:
-            if rx.search(ln.text):
-                entered.append((ln.time.timestamp(), mode))
-                break
-    entered_t = [t for t, _ in entered]
-    loadouts = timeline(lines, lambda ln: int(m.group(1)) if (m := LOADOUT_LINE.search(ln.text)) else None)
-    speeds = timeline(lines, speed_due)
-    configs = timeline(lines, settings)
-    loadout_t, speed_t, config_t = ([t for t, _ in tl] for tl in (loadouts, speeds, configs))
-
-    goals = timeline(lines, lambda ln: m.group(1) if (m := GOAL_LINE.search(ln.text)) else None)
+    goals = [(ln.time.timestamp(), m.group(1)) for ln in lines if (m := GOAL_LINE.search(ln.text))]
     goal_t = [t for t, _ in goals]
+    old_bot, li = OldBotState(), 0
     decisions: list[tuple[float, str]] = []
     views: list[str] = []
     tr, prev = None, None
@@ -146,11 +93,10 @@ def main(argv: list[str] | None = None) -> int:
                         start_button=bool(data["start"][k]) if "start" in data else None,
                         menu_clock=None if data["clock"][k] < 0 else divmod(int(data["clock"][k]), 60))
         f = tr.update(o, t)
-        j = bisect.bisect_right(entered_t, t)
-        pol.mode = entered[j - 1][1] if j else None
-        pol.m.loadout = at_time(loadouts, loadout_t, t)
-        pol.m.speed_due = at_time(speeds, speed_t, t)
-        pol.s = at_time(configs, config_t, t, Settings())
+        while li < len(lines) and lines[li].time.timestamp() <= t:
+            old_bot.feed(lines[li])
+            li += 1
+        old_bot.apply(pol)
         a = pol.step(t, f)
         decisions.append((t, a.name))
         if args.why:

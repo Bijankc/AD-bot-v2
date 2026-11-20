@@ -150,3 +150,19 @@ def test_review_batch_counts_only_new_labels(server):
                                                        "relabel": True, "items": [{"id": raw_id}]}))
     d = get_json(url + "/api/items")
     assert d["batch"] == "review_x" and d["items"][0]["label"] is None and d["items"][0]["old"] == "other"
+
+
+def test_shadow_live_row_is_json():
+    import json
+
+    import numpy as np
+
+    import shadow_live
+    from adbot2.perception import Observation
+    from adbot2.shadowing import LiveShadow
+
+    sh = LiveShadow(["fight", "lobby"], opens=2700)
+    o = Observation(screen="lobby", screen_p=0.98, screen_probs=np.array([0.02, 0.98]), ms={"screen": 12.3})
+    f, a, _ = sh.step(o, 1_800_000_000.0)
+    r = json.loads(json.dumps(shadow_live.row(1_800_000_000.0, o, f, sh, a)))
+    assert r["raw"] == "lobby" and r["action"] == a.name and r["opens"] == 2700
