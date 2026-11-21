@@ -6,8 +6,8 @@ the screen class alone cannot tell "pick a mode, Create" from "press Start". The
 canonical box serves both layouts (20 Nov: 10 PARTY frames, 100% and 150%, button within a few px).
 
 In the Create view the same spot holds the dark "Back" button, so "mostly orange with some white" separates them.
-Thresholds are first guesses from 10 PARTY frames looked at by eye; tools/button_check.py measures them on all
-stored window frames. The policy only uses the reading on window screens.
+Thresholds measured on 21 Nov with tools/button_check.py (10 Start frames, 434 window frames, 600 others): all Start
+frames found, the only other hits are PARTY frames outside the 1.5 s window. The policy only asks on window screens.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ class ButtonRead:
         return self.orange >= ORANGE_MIN and WHITE_MIN <= self.white <= WHITE_MAX
 
 
-ORANGE_MIN = 0.6
+ORANGE_MIN = 0.78   # 21 Nov: Start frames 0.86-0.90; Weekly Quests "Complete" buttons overlap at 0.60-0.62
 WHITE_MIN = 0.04
 WHITE_MAX = 0.35
 
