@@ -38,7 +38,7 @@ class Facts:
 
 def local_time(t: float) -> float:
     """Epoch seconds shifted to local wall time, so that `local_time(t) % 3600` is the second of the local hour.
-    Needed because time zones are not all whole hours: at UTC+5:45 a raid at local :45 opens at UTC :00."""
+    Needed because time zones are not all whole hours: at UTC+5:30 a raid at local :45 opens at UTC :15."""
     return t + time.localtime(t).tm_gmtoff
 
 

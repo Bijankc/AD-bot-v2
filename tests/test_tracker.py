@@ -70,11 +70,11 @@ def test_group_finder_queue_is_debounced():
 
 def test_raid_clock_is_in_local_time(monkeypatch):
     import adbot2.tracker as tracker
-    monkeypatch.setattr(tracker, "local_time", lambda t: t + 5 * 3600 + 45 * 60)
+    monkeypatch.setattr(tracker, "local_time", lambda t: t + 5 * 3600 + 30 * 60)
     tr = Tracker(C)
-    utc_whole_hour = 1_800_000_000
-    tr.update(obs(menu_clock=(2, 0)), utc_whole_hour - 120)     # 2:00 left at UTC :58 = local :43
-    assert tr.update(obs(menu_clock=(1, 58)), utc_whole_hour - 118).raid_opens_at == 2700
+    opens_utc = 1_800_000_000 + 15 * 60          # local :45 at UTC+5:30
+    tr.update(obs(menu_clock=(2, 0)), opens_utc - 120)          # 2:00 left at local :43
+    assert tr.update(obs(menu_clock=(1, 58)), opens_utc - 118).raid_opens_at == 2700
 
 
 def test_start_button_needs_two_frames():
